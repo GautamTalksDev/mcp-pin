@@ -6,7 +6,7 @@
       "source": "npm",
       "description": "JS API for Yahoo Finance",
       "homepage": "git+https://github.com/gadicc/yahoo-finance2.git",
-      "last_probe_at": "2026-09-02T07:00:22.903Z",
+      "last_probe_at": "2026-09-02T07:54:41.862Z",
       "last_error": "exited 2"
     },
     "ce31b052c90a5ddf": {
@@ -15,7 +15,7 @@
       "source": "npm",
       "description": "Mobile app automation and verification for AI coding agents. CLI, MCP server, and typed Node.js API for iOS, Android, HarmonyOS, TV, web, macOS, and Linux.",
       "homepage": "git+https://github.com/callstack/agent-device.git",
-      "last_probe_at": "2026-09-02T07:00:23.973Z",
+      "last_probe_at": "2026-09-02T07:54:42.201Z",
       "last_error": "exited 1"
     },
     "366fcdaaec5e0f13": {
@@ -24,17 +24,8 @@
       "source": "npm",
       "description": "The agentic meta-harness — freeze the model, evolve the harness. An open runtime that routes each query to the cost-optimal model, evolves its own harness (planner/context/reviewer/retry/tool/memory/score policy) and autonomously repairs code, then orches",
       "homepage": "git+https://github.com/ruvnet/agentic-flow.git",
-      "last_probe_at": "2026-09-02T07:00:54.720Z",
+      "last_probe_at": "2026-09-02T07:54:44.067Z",
       "last_error": "exited 0"
-    },
-    "90858a5afebca722": {
-      "id": "90858a5afebca722",
-      "name": "ato-mcp",
-      "source": "npm",
-      "description": "Your AI agent, fluent in Australian tax. MCP server with cited answers from 34,500+ ATO documents, the income tax and GST Acts and 4,900+ rulings, plus deduction, depreciation, BAS and audit-risk tools that know your tax profile.",
-      "homepage": "git+https://github.com/william-laverty/ato-mcp.git",
-      "last_probe_at": "2026-09-02T07:01:14.510Z",
-      "last_error": "timeout"
     },
     "2397a197fd77d140": {
       "id": "2397a197fd77d140",
@@ -44,8 +35,8 @@
       "homepage": "git+https://github.com/artokun/comfyui-mcp.git",
       "set_hash": "6658df1b463ba7876cf0f6476428051877c8db7fea155637ce597b23b49ca918",
       "tool_count": 41,
-      "first_seen_at": "2026-09-02T07:01:16.965Z",
-      "last_probe_at": "2026-09-02T07:01:16.965Z",
+      "first_seen_at": "2026-09-02T07:54:50.320Z",
+      "last_probe_at": "2026-09-02T07:54:50.320Z",
       "last_change_at": null,
       "last_error": null
     },
@@ -57,8 +48,8 @@
       "homepage": "git+https://github.com/zereight/gitlab-mcp.git",
       "set_hash": "934618408b307921353924c7b7ad37f1fea861fb638f5e1580e23223f9c2f116",
       "tool_count": 117,
-      "first_seen_at": "2026-09-02T07:01:18.874Z",
-      "last_probe_at": "2026-09-02T07:01:18.874Z",
+      "first_seen_at": "2026-09-02T07:54:52.412Z",
+      "last_probe_at": "2026-09-02T07:54:52.412Z",
       "last_change_at": null,
       "last_error": null
     },
@@ -70,8 +61,8 @@
       "homepage": "git+https://github.com/currents-dev/currents-mcp.git",
       "set_hash": "9fa88fe3d776dcf1ff620b47dbfc640462d50901f5e4172d4dd5bb4fb228a754",
       "tool_count": 39,
-      "first_seen_at": "2026-09-02T07:01:28.030Z",
-      "last_probe_at": "2026-09-02T07:01:28.030Z",
+      "first_seen_at": "2026-09-02T07:54:53.501Z",
+      "last_probe_at": "2026-09-02T07:54:53.501Z",
       "last_change_at": null,
       "last_error": null
     },
@@ -81,7 +72,7 @@
       "source": "npm",
       "description": "ClickUp MCP Server - Powering AI Agents with full ClickUp task, document, and chat management capabilities.",
       "homepage": "git+https://github.com/taazkareem/clickup-mcp-server.git",
-      "last_probe_at": "2026-09-02T07:01:29.208Z",
+      "last_probe_at": "2026-09-02T07:54:55.157Z",
       "last_error": "exited 1"
     },
     "51758325c4aa419a": {
@@ -90,7 +81,7 @@
       "source": "npm",
       "description": "Thin WebMCP-to-MCP v2 browser adapter with native Chrome tool mirroring",
       "homepage": "git+https://github.com/WebMCP-org/npm-packages.git",
-      "last_probe_at": "2026-09-02T07:01:30.492Z",
+      "last_probe_at": "2026-09-02T07:54:55.681Z",
       "last_error": "exited 0"
     },
     "1b919fb6be37a43a": {
@@ -99,7 +90,16 @@
       "source": "npm",
       "description": "MetaHarness — mint a custom AI agent harness from any repo. Browser Studio + `npx metaharness` CLI. Runs on Claude Code, Codex, pi.dev, Hermes, OpenClaw, RVM, Prime Agent.",
       "homepage": "git+https://github.com/ruvnet/agent-harness-generator.git",
-      "last_probe_at": "2026-09-02T07:01:32.538Z",
+      "last_probe_at": "2026-09-02T07:54:56.575Z",
+      "last_error": "exited 0"
+    },
+    "2b9a5ba750dcc6fe": {
+      "id": "2b9a5ba750dcc6fe",
+      "name": "@cyanheads/mcp-ts-core",
+      "source": "npm",
+      "description": "Agent-native TypeScript framework for building MCP servers. Build tools, not infrastructure. Declarative definitions with auth, multi-backend storage, OpenTelemetry, and first-class support for Bun/Node/Cloudflare Workers.",
+      "homepage": "git+https://github.com/cyanheads/mcp-ts-core.git",
+      "last_probe_at": "2026-09-02T07:54:59.429Z",
       "last_error": "exited 0"
     },
     "b592c5e9a17274c5": {
@@ -110,19 +110,10 @@
       "homepage": "git+https://github.com/bitbonsai/mcpvault.git",
       "set_hash": "0c4fb48d45153d7666bd13af063243da4623d0f7b37eb3fef0f723acf1811834",
       "tool_count": 18,
-      "first_seen_at": "2026-09-02T07:01:36.631Z",
-      "last_probe_at": "2026-09-02T07:01:36.631Z",
+      "first_seen_at": "2026-09-02T07:55:00.372Z",
+      "last_probe_at": "2026-09-02T07:55:00.372Z",
       "last_change_at": null,
       "last_error": null
-    },
-    "2b9a5ba750dcc6fe": {
-      "id": "2b9a5ba750dcc6fe",
-      "name": "@cyanheads/mcp-ts-core",
-      "source": "npm",
-      "description": "Agent-native TypeScript framework for building MCP servers. Build tools, not infrastructure. Declarative definitions with auth, multi-backend storage, OpenTelemetry, and first-class support for Bun/Node/Cloudflare Workers.",
-      "homepage": "git+https://github.com/cyanheads/mcp-ts-core.git",
-      "last_probe_at": "2026-09-02T07:01:39.226Z",
-      "last_error": "exited 0"
     },
     "14ae559be20b0def": {
       "id": "14ae559be20b0def",
@@ -132,8 +123,8 @@
       "homepage": "git+https://github.com/aashari/mcp-server-atlassian-jira.git",
       "set_hash": "1d4477fe2e237fe052d260a1c748c4a47b92da5278a993da58e399361d973252",
       "tool_count": 5,
-      "first_seen_at": "2026-09-02T07:01:40.168Z",
-      "last_probe_at": "2026-09-02T07:01:40.168Z",
+      "first_seen_at": "2026-09-02T07:55:01.103Z",
+      "last_probe_at": "2026-09-02T07:55:01.103Z",
       "last_change_at": null,
       "last_error": null
     },
@@ -143,16 +134,7 @@
       "source": "npm",
       "description": "The CLI for IronBee — Verification and Intelligence Layer for Agentic Development",
       "homepage": "git+https://github.com/ironbee-ai/ironbee-cli.git",
-      "last_probe_at": "2026-09-02T07:01:41.037Z",
-      "last_error": "exited 0"
-    },
-    "ca8b5f2cb8005f05": {
-      "id": "ca8b5f2cb8005f05",
-      "name": "@mcp-b/transports",
-      "source": "npm",
-      "description": "Browser transport implementations for Model Context Protocol (MCP) - postMessage, Chrome extension messaging, and iframe communication for AI agents and LLMs",
-      "homepage": "git+https://github.com/WebMCP-org/npm-packages.git",
-      "last_probe_at": "2026-09-02T07:01:50.376Z",
+      "last_probe_at": "2026-09-02T07:55:04.953Z",
       "last_error": "exited 0"
     },
     "9bebbec14fb8af60": {
@@ -163,19 +145,10 @@
       "homepage": "git+https://github.com/ironbee-ai/ironbee-devtools.git",
       "set_hash": "950f665f888c2ba9c39a75b379018907802b2b8475bdce8ad58f2e5d6fe9f253",
       "tool_count": 57,
-      "first_seen_at": "2026-09-02T07:01:57.810Z",
-      "last_probe_at": "2026-09-02T07:01:57.810Z",
+      "first_seen_at": "2026-09-02T07:55:06.337Z",
+      "last_probe_at": "2026-09-02T07:55:06.337Z",
       "last_change_at": null,
       "last_error": null
-    },
-    "369a51c4e80149ad": {
-      "id": "369a51c4e80149ad",
-      "name": "aiwg",
-      "source": "npm",
-      "description": "Deployment tool and support utility for AI context. Copies agents, skills, commands, rules, and behaviors into the paths each AI platform reads (Claude Code, Codex, Copilot, Cursor, Warp, OpenClaw, and 6 more) so one source of truth works across 10 platfo",
-      "homepage": "git+https://github.com/jmagly/aiwg.git",
-      "last_probe_at": "2026-09-02T07:02:00.485Z",
-      "last_error": "exited 0"
     },
     "e255adb1c3c86bdb": {
       "id": "e255adb1c3c86bdb",
@@ -183,8 +156,26 @@
       "source": "npm",
       "description": "Email MCP server with IMAP + SMTP support",
       "homepage": "git+https://github.com/codefuturist/email-mcp.git",
-      "last_probe_at": "2026-09-02T07:02:04.743Z",
+      "last_probe_at": "2026-09-02T07:55:07.494Z",
       "last_error": "exited 1"
+    },
+    "369a51c4e80149ad": {
+      "id": "369a51c4e80149ad",
+      "name": "aiwg",
+      "source": "npm",
+      "description": "Deployment tool and support utility for AI context. Copies agents, skills, commands, rules, and behaviors into the paths each AI platform reads (Claude Code, Codex, Copilot, Cursor, Warp, OpenClaw, and 6 more) so one source of truth works across 10 platfo",
+      "homepage": "git+https://github.com/jmagly/aiwg.git",
+      "last_probe_at": "2026-09-02T07:55:08.463Z",
+      "last_error": "exited 0"
+    },
+    "ca8b5f2cb8005f05": {
+      "id": "ca8b5f2cb8005f05",
+      "name": "@mcp-b/transports",
+      "source": "npm",
+      "description": "Browser transport implementations for Model Context Protocol (MCP) - postMessage, Chrome extension messaging, and iframe communication for AI agents and LLMs",
+      "homepage": "git+https://github.com/WebMCP-org/npm-packages.git",
+      "last_probe_at": "2026-09-02T07:55:09.226Z",
+      "last_error": "exited 0"
     },
     "d97ad7f317055cfd": {
       "id": "d97ad7f317055cfd",
@@ -192,7 +183,7 @@
       "source": "npm",
       "description": "Check for deprecated packages",
       "homepage": "git+https://github.com/KID-joker/npm-deprecated-check.git",
-      "last_probe_at": "2026-09-02T07:02:08.028Z",
+      "last_probe_at": "2026-09-02T07:55:09.805Z",
       "last_error": "exited 1"
     },
     "6bf196a4265aa918": {
@@ -201,7 +192,34 @@
       "source": "npm",
       "description": "Lower-level WorkPaper formula runtime for Node services with JSON persistence and verified formula readback.",
       "homepage": "git+https://github.com/proompteng/bilig.git",
-      "last_probe_at": "2026-09-02T07:02:23.093Z",
+      "last_probe_at": "2026-09-02T07:55:11.102Z",
+      "last_error": "exited 0"
+    },
+    "90858a5afebca722": {
+      "id": "90858a5afebca722",
+      "name": "ato-mcp",
+      "source": "npm",
+      "description": "Your AI agent, fluent in Australian tax. MCP server with cited answers from 34,500+ ATO documents, the income tax and GST Acts and 4,900+ rulings, plus deduction, depreciation, BAS and audit-risk tools that know your tax profile.",
+      "homepage": "git+https://github.com/william-laverty/ato-mcp.git",
+      "last_probe_at": "2026-09-02T07:55:15.131Z",
+      "last_error": "timeout"
+    },
+    "8c44ca8543d4afff": {
+      "id": "8c44ca8543d4afff",
+      "name": "@benborla29/mcp-server-mysql",
+      "source": "npm",
+      "description": "MCP server for interacting with MySQL databases with write operations support",
+      "homepage": "git+https://github.com/benborla/mcp-server-mysql.git",
+      "last_probe_at": "2026-09-02T07:55:16.141Z",
+      "last_error": "exited 1"
+    },
+    "d7d22dd361fec442": {
+      "id": "d7d22dd361fec442",
+      "name": "@mcp-b/react-webmcp",
+      "source": "npm",
+      "description": "React hooks for Model Context Protocol (MCP) - expose React components as AI tools for Claude, ChatGPT, Cursor, and Copilot",
+      "homepage": "git+https://github.com/WebMCP-org/npm-packages.git",
+      "last_probe_at": "2026-09-02T07:55:16.737Z",
       "last_error": "exited 0"
     },
     "036f17fcbe72c019": {
@@ -212,28 +230,10 @@
       "homepage": "https://www.npmjs.com/package/12306-mcp",
       "set_hash": "b58719c26c7bee71ac548691eb4e4431334799464a61e5322d80616900358813",
       "tool_count": 8,
-      "first_seen_at": "2026-09-02T07:02:27.704Z",
-      "last_probe_at": "2026-09-02T07:02:27.704Z",
+      "first_seen_at": "2026-09-02T07:55:17.620Z",
+      "last_probe_at": "2026-09-02T07:55:17.620Z",
       "last_change_at": null,
       "last_error": null
-    },
-    "8c44ca8543d4afff": {
-      "id": "8c44ca8543d4afff",
-      "name": "@benborla29/mcp-server-mysql",
-      "source": "npm",
-      "description": "MCP server for interacting with MySQL databases with write operations support",
-      "homepage": "git+https://github.com/benborla/mcp-server-mysql.git",
-      "last_probe_at": "2026-09-02T07:02:28.789Z",
-      "last_error": "exited 1"
-    },
-    "d7d22dd361fec442": {
-      "id": "d7d22dd361fec442",
-      "name": "@mcp-b/react-webmcp",
-      "source": "npm",
-      "description": "React hooks for Model Context Protocol (MCP) - expose React components as AI tools for Claude, ChatGPT, Cursor, and Copilot",
-      "homepage": "git+https://github.com/WebMCP-org/npm-packages.git",
-      "last_probe_at": "2026-09-02T07:02:32.538Z",
-      "last_error": "exited 0"
     },
     "e35e33895a92ebd8": {
       "id": "e35e33895a92ebd8",
@@ -241,7 +241,7 @@
       "source": "npm",
       "description": "MCP server for Storybook - provides AI assistants access to components, stories, properties and screenshots",
       "homepage": "git+https://github.com/stefanoamorelli/storybook-mcp-server.git",
-      "last_probe_at": "2026-09-02T07:02:38.573Z",
+      "last_probe_at": "2026-09-02T07:55:18.061Z",
       "last_error": "exited 1"
     },
     "d628d01e44383266": {
@@ -250,8 +250,155 @@
       "source": "npm",
       "description": "MCP server for Microsoft 365 Copilot",
       "homepage": "git+https://github.com/microsoft/work-iq.git",
-      "last_probe_at": "2026-09-02T07:02:46.475Z",
+      "last_probe_at": "2026-09-02T07:55:21.646Z",
       "last_error": "exited 1"
+    },
+    "58ae90ffd9c65105": {
+      "id": "58ae90ffd9c65105",
+      "name": "semiotic",
+      "source": "npm",
+      "description": "Verified generative visualization for React and agents, with deterministic chart validation, repair, rendering evidence, and MCP.",
+      "homepage": "git+https://github.com/nteract/semiotic.git",
+      "last_probe_at": "2026-09-02T07:55:25.327Z",
+      "last_error": "exited 0"
+    },
+    "c91d9b3d6b0dd879": {
+      "id": "c91d9b3d6b0dd879",
+      "name": "@noodleseed/one",
+      "source": "npm",
+      "description": "Noodle CLI by Noodle Seed — author, run, and deploy declarative MCP servers. Embedding the assistant in your own web app is @noodleseed/assistant.",
+      "homepage": "git+https://github.com/NoodleSeed-com/noodle-core.git",
+      "last_probe_at": "2026-09-02T07:55:26.608Z",
+      "last_error": "exited 0"
+    },
+    "27776f3f158e97ea": {
+      "id": "27776f3f158e97ea",
+      "name": "neo.mjs",
+      "source": "npm",
+      "description": "Neo.mjs is a self-evolving software organism: a professional end-to-end AI engineering team whose cross-model swarm inhabits live apps via Neural Link, Active Hybrid GraphRAG, DreamService, and self-healing loops.",
+      "homepage": "git+https://github.com/neomjs/neo.git",
+      "last_probe_at": "2026-09-02T07:55:29.567Z",
+      "last_error": "exited 1"
+    },
+    "9837b316d1b7c187": {
+      "id": "9837b316d1b7c187",
+      "name": "local-mcp",
+      "source": "npm",
+      "description": "Let ChatGPT, Claude, Cursor & any MCP client actually use your Mac — read & reply to email, manage your calendar, text over iMessage, find files, work with Teams, Slack & Office. On your Mac, no API keys, free.",
+      "homepage": "git+https://github.com/lanchuske/local-mcp.git",
+      "last_probe_at": "2026-09-02T07:55:30.584Z",
+      "last_error": "exited 1"
+    },
+    "edd4e89406c34742": {
+      "id": "edd4e89406c34742",
+      "name": "@yawlabs/ctxlint",
+      "source": "npm",
+      "description": "Lint your AI agent context files, MCP server configs, and session data against your actual codebase",
+      "homepage": "git+https://github.com/YawLabs/ctxlint.git",
+      "last_probe_at": "2026-09-02T07:55:32.148Z",
+      "last_error": "exited 0"
+    },
+    "e55eef94dddc05a5": {
+      "id": "e55eef94dddc05a5",
+      "name": "@postman/postman-mcp-server",
+      "source": "npm",
+      "description": "Postman MCP Server — connect AI agents (Claude Code, Cursor, VS Code Copilot, Gemini CLI) to your Postman collections, specifications, and environments via Model Context Protocol (MCP)",
+      "homepage": "git+https://github.com/postmanlabs/postman-mcp-server.git",
+      "last_probe_at": "2026-09-02T07:55:36.873Z",
+      "last_error": "exited 1"
+    },
+    "cb58df41fc75d538": {
+      "id": "cb58df41fc75d538",
+      "name": "@respira/wordpress-mcp-server",
+      "source": "npm",
+      "description": "WordPress MCP server + companion plugin giving AI native access to page builder content, not just the REST API. 220 tools, 325 with WooCommerce, 17 page builders and the Site Editor. Element-level edits, full page creation, HTML to builder conversion, sna",
+      "homepage": "git+https://github.com/webmyc/respira-wordpress.git",
+      "last_probe_at": "2026-09-02T07:55:43.636Z",
+      "last_error": "exited 1"
+    },
+    "dec263bf44aef47b": {
+      "id": "dec263bf44aef47b",
+      "name": "patchwork-os",
+      "source": "npm",
+      "description": "Your personal AI runtime, local-first. Patchwork OS gives any AI model a consistent set of tools, YAML recipes, a delegation policy with approval queue, and a durable trace memory — all on your machine, all under your policy.",
+      "homepage": "git+https://github.com/Oolab-labs/patchwork-os.git",
+      "last_probe_at": "2026-09-02T07:55:54.581Z",
+      "last_error": "timeout"
+    },
+    "8c733c9244e67dc8": {
+      "id": "8c733c9244e67dc8",
+      "name": "@remem-ai/remem",
+      "source": "npm",
+      "description": "Local-first coding agent memory for Claude Code and OpenAI Codex",
+      "homepage": "git+https://github.com/majiayu000/remem.git",
+      "last_probe_at": "2026-09-02T07:55:55.336Z",
+      "last_error": "needs credentials (REMEM_NPM_BINARY)"
+    },
+    "acff16138e6f9c59": {
+      "id": "acff16138e6f9c59",
+      "name": "@aashari/mcp-server-atlassian-confluence",
+      "source": "npm",
+      "description": "Node.js/TypeScript MCP server for Atlassian Confluence. Provides tools enabling AI systems (LLMs) to list/get spaces & pages (content formatted as Markdown) and search via CQL. Connects AI seamlessly to Confluence knowledge bases using the standard MCP in",
+      "homepage": "git+https://github.com/aashari/mcp-server-atlassian-confluence.git",
+      "set_hash": "7af1d2f67f6f70ecb0dcdcb353f9c06920cb77814e125760904419abcf98ebea",
+      "tool_count": 5,
+      "first_seen_at": "2026-09-02T07:55:57.924Z",
+      "last_probe_at": "2026-09-02T07:55:57.924Z",
+      "last_change_at": null,
+      "last_error": null
+    },
+    "fe86e3220232f4be": {
+      "id": "fe86e3220232f4be",
+      "name": "@planu/cli",
+      "source": "npm",
+      "description": "Planu — MCP Server for Spec Driven Development. Cross-platform (Linux/macOS/Windows, x64/arm64).",
+      "homepage": "https://www.npmjs.com/package/@planu/cli",
+      "set_hash": "472af1a8b33db0ef73aa78da1e6543b636f1e83ec72addd6baeac9c8d6f72db6",
+      "tool_count": 19,
+      "first_seen_at": "2026-09-02T07:56:02.328Z",
+      "last_probe_at": "2026-09-02T07:56:02.328Z",
+      "last_change_at": null,
+      "last_error": null
+    },
+    "cf3530d433b77998": {
+      "id": "cf3530d433b77998",
+      "name": "obsidian-mcp-server",
+      "source": "npm",
+      "description": "Read, write, search, and surgically edit Obsidian vault notes, tags, and frontmatter via MCP. STDIO or Streamable HTTP.",
+      "homepage": "git+https://github.com/cyanheads/obsidian-mcp-server.git",
+      "last_probe_at": "2026-09-02T07:56:05.564Z",
+      "last_error": "exited 1"
+    },
+    "32098f43991032f3": {
+      "id": "32098f43991032f3",
+      "name": "yaver-cli",
+      "source": "npm",
+      "description": "Unified npm bootstrap for the Yaver agent, SDK injection, and local-first developer runtime",
+      "homepage": "git+https://github.com/yaver-io/yaver.io.git",
+      "last_probe_at": "2026-09-02T07:56:17.201Z",
+      "last_error": "exited 0"
+    },
+    "855dc053fbfe47d5": {
+      "id": "855dc053fbfe47d5",
+      "name": "@oracle-agent/oracle",
+      "source": "npm",
+      "description": "Oracle: standalone multichain agent control plane with an optional encrypted, loopback-only self-hosted signer.",
+      "homepage": "git+https://github.com/demi-hl/oracle.git",
+      "last_probe_at": "2026-09-02T07:56:18.239Z",
+      "last_error": "exited 0"
+    },
+    "6b007453b0281333": {
+      "id": "6b007453b0281333",
+      "name": "@cyanheads/git-mcp-server",
+      "source": "npm",
+      "description": "A secure and scalable Git MCP server enabling AI agents to perform comprehensive Git version control operations via STDIO and Streamable HTTP.",
+      "homepage": "git+https://github.com/cyanheads/git-mcp-server.git",
+      "set_hash": "e7b1e5913c72eba5f9d8613e2e421d0ef459f359656808113dc84c439bf7bf21",
+      "tool_count": 28,
+      "first_seen_at": "2026-09-02T07:56:18.470Z",
+      "last_probe_at": "2026-09-02T07:56:18.470Z",
+      "last_change_at": null,
+      "last_error": null
     }
   }
 }

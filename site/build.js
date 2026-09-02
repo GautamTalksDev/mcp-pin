@@ -46,8 +46,11 @@ function page(title, body) {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="referrer" content="no-referrer">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<meta property="og:title" content="${esc(title)}">
+<meta property="og:description" content="A public, append-only record of what every MCP server's tools looked like, and when they changed.">
 <title>${esc(title)}</title><style>${CSS}</style><div class="wrap">${body}
-<div class="foot">mcp-pin — a public record of MCP tool definitions over time.
+<div class="foot">mcp-pin, a public record of MCP tool definitions over time.
 Every entry is hash-linked; <a href="/log.ndjson">download the log</a> and verify it offline with
 <code>npx mcp-pin verify-log</code>. <a href="https://github.com/GautamTalksDev/mcp-pin">source</a></div></div></html>`;
 }
@@ -81,6 +84,8 @@ function diffHtml(oldC, newC, name) {
   fs.mkdirSync(path.join(OUT, 'api'), { recursive: true });
 
   // copy the verifiable artifacts
+  fs.copyFileSync(path.join(__dirname, 'logo.svg'), path.join(OUT, 'logo.svg'));
+
   for (const f of ['log.ndjson', 'head.json']) {
     const p = path.join(DATA, f);
     if (fs.existsSync(p)) fs.copyFileSync(p, path.join(OUT, f));
@@ -94,8 +99,8 @@ function diffHtml(oldC, newC, name) {
 <div class="meta">${esc((s.description || '').slice(0, 110))}</div></div>
 <div style="text-align:right"><div>${pill(s)}</div><div class="meta">${s.tool_count} tools</div></div></div>`).join('\n');
 
-  fs.writeFileSync(path.join(OUT, 'index.html'), page('mcp-pin — public log of MCP tool definitions', `
-<h1>mcp-pin</h1>
+  fs.writeFileSync(path.join(OUT, 'index.html'), page('mcp-pin, the public log of MCP tool definitions', `
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:6px"><img src="/logo.svg" width="40" height="40" alt=""><h1 style="margin:0">mcp-pin</h1></div>
 <p class="sub">A public, append-only record of what every MCP server's tools looked like, and when they changed.
 Your client asks you to approve a server once. It never checks again.</p>
 <div class="stats">
@@ -129,7 +134,7 @@ Your client asks you to approve a server once. It never checks again.</p>
     const toolList = (latest ? latest.tools : []).map((t) => `<div class="row"><div class="nm">${esc(t.name)}</div><div class="meta">${esc(t.hash.slice(0, 16))}</div></div>`).join('\n');
     const snippet = `[![mcp-pin](${SITE}/badge/${s.id}.svg)](${SITE}/servers/${s.id}.html)`;
 
-    fs.writeFileSync(path.join(OUT, 'servers', s.id + '.html'), page(`${s.name} — mcp-pin`, `
+    fs.writeFileSync(path.join(OUT, 'servers', s.id + '.html'), page(`${s.name} , mcp-pin`, `
 <h1>${esc(s.name)}</h1>
 <p class="sub">${esc(s.description || '')}</p>
 <div class="stats">

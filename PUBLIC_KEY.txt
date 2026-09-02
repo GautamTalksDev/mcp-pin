@@ -1,0 +1,2 @@
+ed25519 public key for the mcp-pin log
+MCowBQYDK2VwAyEAzEEgtVWLHvqHZ/K3X3NfuV1LxWyyW2y2CVvLrxFPfnM=

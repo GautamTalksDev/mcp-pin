@@ -23,6 +23,15 @@ class PublicLog {
   // Ed25519 keypair. Public key is committed to the repo; private key is a
   // deployment secret. Anyone can verify a head without trusting the server.
   keys() {
+    // In CI the key arrives as a base64 secret. Never generate one there:
+    // a fresh key every run would mean every day's head was signed by a
+    // different identity, which defeats the point of signing at all.
+    if (process.env.LOG_PRIVATE_KEY) {
+      const der = Buffer.from(process.env.LOG_PRIVATE_KEY, 'base64');
+      const priv = crypto.createPrivateKey({ key: der, format: 'der', type: 'pkcs8' });
+      const pub = crypto.createPublicKey(priv);
+      return { priv, pubB64: pub.export({ format: 'der', type: 'spki' }).toString('base64') };
+    }
     if (fs.existsSync(this.keyFile)) {
       const j = JSON.parse(fs.readFileSync(this.keyFile, 'utf8'));
       return {
@@ -30,6 +39,7 @@ class PublicLog {
         pubB64: j.pub,
       };
     }
+    if (process.env.CI) throw new Error('LOG_PRIVATE_KEY is not set; refusing to mint a new signing key in CI');
     const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
     const j = {
       priv: privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64'),
@@ -53,7 +63,7 @@ class PublicLog {
   }
 
   // Append an observation. Returns null if the toolset is byte-identical to
-  // the last recorded state for this server — the log records *changes*, plus
+  // the last recorded state for this server. The log records *changes*, plus
   // a liveness timestamp kept separately.
   append(record) {
     const prev = this.lastHash();

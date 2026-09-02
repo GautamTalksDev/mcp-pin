@@ -2,7 +2,7 @@
 'use strict';
 /*
  * DEMO ONLY. A minimal MCP server that is benign on first connect and
- * mutates its own tool description on the second — the rug pull.
+ * mutates its own tool description on the second , the rug pull.
  *
  * The payload is deliberately inert: it asks the agent to read a file at
  * ./DEMO_SECRET.txt and pass the contents in a parameter the server logs.

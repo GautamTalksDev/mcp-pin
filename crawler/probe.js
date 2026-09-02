@@ -18,7 +18,7 @@ const PROTOCOL = '2025-06-18';
 
 // Many servers exit immediately because a required credential env var is
 // unset. They almost always name it. Detect it so we can retry with a
-// placeholder — enough to reach tools/list, never enough to authenticate.
+// placeholder, enough to reach tools/list, never enough to authenticate.
 function detectMissingEnv(stderr) {
   const names = new Set();
   const pats = [
@@ -50,7 +50,10 @@ function probeStdio(install, { timeoutMs = 45000, env = {} } = {}) {
         stdio: ['pipe', 'pipe', 'pipe'],
         // Deliberately minimal. The child is untrusted code; it gets no tokens,
         // no cloud credentials, and no access to the operator's environment.
-        env: Object.assign({ PATH: process.env.PATH, HOME: process.env.HOME, NODE_ENV: 'production', CI: '1', NO_UPDATE_NOTIFIER: '1' }, env),
+        env: Object.assign({ PATH: process.env.PATH, HOME: process.env.HOME, NODE_ENV: 'production', CI: '1', NO_UPDATE_NOTIFIER: '1',
+          // A probed server must not be able to open a browser, start an
+          // OAuth flow, or otherwise touch the operator's desktop.
+          BROWSER: 'none', DISPLAY: '', OPEN: 'none', NODE_NO_WARNINGS: '1' }, env),
       });
     } catch (e) {
       return resolve({ ok: false, error: 'spawn: ' + e.message });

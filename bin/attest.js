@@ -153,7 +153,7 @@ function halt(verdict) {
     '',
     C.bold('  This session is blocked. Nothing was sent to the model.'),
     `  Review the diff. If you accept it:  ${C.bold('mcp-pin approve ' + id)}`,
-    `  Otherwise, do nothing — the pin stands.`,
+    `  Otherwise, do nothing and the pin stands.`,
     '',
   ].join('\n');
   process.stderr.write(out);
@@ -202,7 +202,7 @@ function cmdVerifyLog(dir) {
   const target = dir || '.';
   const r = new PublicLog(target).verify();
   if (r.ok) {
-    process.stdout.write(`public log OK — ${r.count} entries, chain intact, head signature valid\n`);
+    process.stdout.write(`public log OK, ${r.count} entries, chain intact, head signature valid\n`);
   } else {
     process.stderr.write(`public log FAILED: ${r.reason}\n`);
     process.exit(1);
@@ -211,6 +211,6 @@ function cmdVerifyLog(dir) {
 
 function cmdVerify() {
   const r = store.verifyLog();
-  if (r.ok) process.stdout.write(`log ok — ${r.count} entries, chain intact\n`);
+  if (r.ok) process.stdout.write(`log ok, ${r.count} entries, chain intact\n`);
   else { process.stderr.write(`log BROKEN at entry ${r.index}: ${r.reason}\n`); process.exit(1); }
 }
