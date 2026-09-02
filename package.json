@@ -2,9 +2,39 @@
   "name": "mcp-pin",
   "version": "0.1.0",
   "description": "Tool-integrity pinning for MCP. Pin what your agent approved; block it when it changes.",
-  "bin": { "mcp-pin": "bin/attest.js" },
-  "files": ["bin", "src", "README.md"],
-  "engines": { "node": ">=20" },
+  "bin": {
+    "mcp-pin": "bin/attest.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "crawler",
+    "site",
+    "README.md",
+    "SECURITY.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "license": "MIT",
-  "keywords": ["mcp", "model-context-protocol", "security", "tool-poisoning", "supply-chain"]
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "security",
+    "tool-poisoning",
+    "supply-chain"
+  ],
+  "scripts": {
+    "test": "node test/run.js",
+    "crawl": "node crawler/crawl.js --allow-exec --concurrency 2",
+    "build": "node site/build.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GautamTalksDev/mcp-pin.git"
+  },
+  "homepage": "https://github.com/GautamTalksDev/mcp-pin#readme",
+  "bugs": "https://github.com/GautamTalksDev/mcp-pin/issues",
+  "author": "Gautam Khosla"
 }

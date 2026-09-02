@@ -1,0 +1,11 @@
+{
+  "ran_at": "2026-09-02T07:02:46.511Z",
+  "duration_s": 150,
+  "candidates": 25,
+  "probed_ok": 7,
+  "failed": 18,
+  "newly_recorded": 7,
+  "changed": 0,
+  "log_size": 7,
+  "log_verified": true
+}

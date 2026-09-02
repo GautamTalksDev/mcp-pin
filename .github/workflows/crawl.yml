@@ -1,0 +1,43 @@
+name: crawl
+on:
+  schedule: [{ cron: '0 6 * * *' }]   # 06:00 UTC daily
+  workflow_dispatch:
+permissions: { contents: write }
+concurrency:
+  group: crawl
+  cancel-in-progress: false
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      # This step downloads and executes third-party npm packages. It runs
+      # only on this ephemeral runner, with no secrets mounted beyond the
+      # default read-only token. The log signing key is deliberately NOT
+      # available here: a compromised crawl must not be able to sign a head.
+      - name: Crawl
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node crawler/crawl.js --allow-exec --concurrency 2 --delay-ms 250 --limit 800
+
+      - name: Verify the log before anything is published
+        run: node bin/attest.js verify-log data
+
+      - name: Build the site
+        run: node site/build.js
+
+      - name: Commit the log
+        run: |
+          git config user.name  "mcp-pin-crawler"
+          git config user.email "crawler@users.noreply.github.com"
+          git add data/log.ndjson data/head.json data/state.json data/last-crawl.json
+          git diff --staged --quiet || git commit -m "crawl: $(date -u +%F)"
+          git push
+
+      - uses: actions/upload-artifact@v4
+        with: { name: site, path: public, retention-days: 30 }

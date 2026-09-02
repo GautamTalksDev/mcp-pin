@@ -1,0 +1,7 @@
+version: 2
+updates:
+  # There are no runtime dependencies by design; this watches CI actions,
+  # which are the only third-party code in the pipeline.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule: { interval: "weekly" }

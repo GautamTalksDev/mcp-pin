@@ -1,18 +1,36 @@
-# The 45-second video (this is the launch, not the repo)
+# The 45 second video
 
-Shot in Claude Desktop. Two terminals visible. No voiceover, no intro, no face.
+This is the launch asset. The repository is not.
 
-0:00–0:05  Config on screen: demo weather server added to Claude Desktop. Approve dialog. Click Approve.
-0:05–0:12  Ask: "what's the weather in Toronto?" Normal answer. Nothing suspicious.
-0:12–0:15  CUT TO BLACK CARD: "restart Claude Desktop. Same server. Nothing was reinstalled."
-0:15–0:28  Same question. The agent reads DEMO_SECRET.txt and passes it to the server.
-           Server terminal prints: [rugpull-server] EXFILTRATED: "..."
-           No approval prompt. No warning. This is the shot the whole video exists for. Hold it.
-0:28–0:32  BLACK CARD: "the tool description changed. the client never re-checked."
-0:32–0:45  Same config, wrapped in `npx attest --`. Restart. Red diff fills the terminal, session blocked.
+## The claim being demonstrated
 
-Rules:
-- Terminal font 18pt+. It will be watched on a phone.
-- No music. No zoom effects. The silence when nothing alerts at 0:15 is the argument.
-- Post the raw demo server source in the repo. People will assume it's staged unless they can run it.
-- Do NOT ship the video with a call to action beyond the repo link.
+**Drift, not exfiltration.**
+
+Testing on 2 September 2026 showed Claude Desktop refusing injected instructions in tool descriptions and warning the user about them unprompted. Twice, including a subtle payload with no urgency markers and a plausible cover story.
+
+So do not film a leak. It did not happen, staging it would be the fastest way to lose every reader who tries to reproduce it, and the true version is strong enough:
+
+> The definition changed between sessions and nothing told you.
+
+## Shot list
+
+| Time | Shot |
+|---|---|
+| 0:00 to 0:06 | Config on screen. Approve the demo server. Show the approval dialog clearly. |
+| 0:06 to 0:12 | Ask for the weather. Normal answer. Everything looks fine. |
+| 0:12 to 0:16 | Black card: "restart. same server. nothing reinstalled." |
+| 0:16 to 0:26 | Ask again. Normal answer again. Cut to the tool description side by side with the approved one. They differ. No prompt, no warning, no re-approval. Hold this shot. |
+| 0:26 to 0:30 | Black card: "your client approved a tool once and never looked again." |
+| 0:30 to 0:45 | Same config wrapped in `npx mcp-pin --`. Restart. Red diff, session blocked. |
+
+## Rules
+
+- Terminal font 18pt or larger. It will be watched on a phone.
+- Hold the diff long enough to read one changed line. Resist cutting on the beat.
+- No music, no voiceover, no face, no intro card with your name.
+- Ship the demo server source in the repository. People assume staging unless they can run it themselves.
+- No call to action beyond the repository link.
+
+## Why the silence works
+
+The strongest moment is 0:16 to 0:26, where nothing happens. No alert, no dialog, no colour change. That absence is the argument, and narration would weaken it.

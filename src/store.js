@@ -4,7 +4,7 @@ const path = require('path');
 const os = require('os');
 const { sha256 } = require('./canonical');
 
-const HOME = process.env.ATTEST_HOME || path.join(os.homedir(), '.attest');
+const HOME = process.env.MCP_PIN_HOME || process.env.ATTEST_HOME || path.join(os.homedir(), '.mcp-pin');
 const PINS = path.join(HOME, 'pins.json');
 const LOG = path.join(HOME, 'log.ndjson');
 

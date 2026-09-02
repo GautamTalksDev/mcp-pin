@@ -1,0 +1,4 @@
+# Servers that have asked not to be crawled.
+# One package or server name per line. Case insensitive. '#' starts a comment.
+# Open a pull request or an issue titled "opt out: <name>" and it is honoured
+# on the next crawl, no questions asked and no justification required.

@@ -1,4 +1,9 @@
 node_modules/
 demo/.connects
 .attest/
+.mcp-pin/
+data/log-key.json
+public/
 *.log
+*:Zone.Identifier
+.DS_Store

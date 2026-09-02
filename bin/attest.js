@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 'use strict';
 /*
- * mcp-pin — pin the tools your agent was introduced to, and re-derive that
+ * mcp-pin. Pin the tools your agent was introduced to, and re-derive that
  * decision on every connect.
  *
  * usage:  npx mcp-pin -- <server command> [args...]
- *         npx attest list | show <id> | approve <id> | forget <id> | verify
+ *         npx mcp-pin list | show <id> | approve <id> | forget <id> | verify
  */
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -18,13 +18,13 @@ const argv = process.argv.slice(2);
 
 function usage(code) {
   process.stderr.write(
-    `attest — tool-integrity pinning for MCP\n\n` +
+    `mcp-pin, tool-integrity pinning for MCP\n\n` +
       `  mcp-pin -- <server command> [args...]   run a server behind the proxy\n` +
-      `  attest list                            pinned servers\n` +
-      `  attest show <id>                       pinned tool fingerprints\n` +
-      `  attest approve <id>                    accept the last observed drift\n` +
-      `  attest forget <id>                     drop a pin (re-pins on next run)\n` +
-      `  attest verify                          verify the local log chain\n\n` +
+      `  mcp-pin list                            pinned servers\n` +
+      `  mcp-pin show <id>                       pinned tool fingerprints\n` +
+      `  mcp-pin approve <id>                    accept the last observed drift\n` +
+      `  mcp-pin forget <id>                     drop a pin (re-pins on next run)\n` +
+      `  mcp-pin verify                          verify the local log chain\n\n` +
       `  --name <label>   friendly name for this server\n` +
       `  --yes            auto-approve first pin only (never approves drift)\n`
   );
@@ -39,6 +39,7 @@ if (sub === 'show') return cmdShow(argv[1]);
 if (sub === 'approve') return cmdApprove(argv[1]);
 if (sub === 'forget') return cmdForget(argv[1]);
 if (sub === 'verify') return cmdVerify();
+if (sub === 'verify-log') return cmdVerifyLog(argv[1]);
 
 /* ---------------------------------------------------------------- proxy */
 
@@ -56,7 +57,7 @@ const label = nameFlag || command + (args.length ? ' ' + args.join(' ') : '');
 
 const child = spawn(command, args, { stdio: ['pipe', 'pipe', 'inherit'] });
 child.on('error', (e) => {
-  process.stderr.write(`attest: cannot start server: ${e.message}\n`);
+  process.stderr.write(`mcp-pin: cannot start server: ${e.message}\n`);
   process.exit(127);
 });
 
@@ -67,7 +68,7 @@ process.stdin.pipe(child.stdin);
 
 // server -> client (inspect tools/list results before they reach the model)
 const rl = readline.createInterface({ input: child.stdout });
-const probeId = 'attest-probe-' + process.pid;
+const probeId = 'mcp-pin-probe-' + process.pid;
 let probed = false;
 
 rl.on('line', (line) => {
@@ -91,7 +92,7 @@ rl.on('line', (line) => {
       if (msg.id !== probeId) {
         process.stdout.write(JSON.stringify({
           jsonrpc: '2.0', id: msg.id,
-          error: { code: -32001, message: 'attest: tool definitions changed since approval; session blocked' },
+          error: { code: -32001, message: 'mcp-pin: tool definitions changed since approval; session blocked' },
         }) + '\n');
       }
       halt(verdict);
@@ -115,12 +116,12 @@ function check(tools) {
   if (!pin) {
     store.setPin(id, { id, label, command, args, setHash: fp.setHash, tools: fp.tools, pinned_at: new Date().toISOString() });
     store.append({ type: 'pin', server_id: id, label, set_hash: fp.setHash, tools: fp.tools.map((t) => ({ name: t.name, hash: t.hash, canonical_json: t.canonical })) });
-    process.stderr.write(C.dim(`attest: pinned ${fp.tools.length} tool(s) for ${label} (${fp.setHash.slice(0, 12)})\n`));
+    process.stderr.write(C.dim(`mcp-pin: pinned ${fp.tools.length} tool(s) for ${label} (${fp.setHash.slice(0, 12)})\n`));
     return { blocked: false };
   }
 
   if (pin.setHash === fp.setHash) {
-    process.stderr.write(C.dim(`attest: ${fp.tools.length} tool(s) unchanged (${fp.setHash.slice(0, 12)})\n`));
+    process.stderr.write(C.dim(`mcp-pin: ${fp.tools.length} tool(s) unchanged (${fp.setHash.slice(0, 12)})\n`));
     return { blocked: false };
   }
 
@@ -142,7 +143,7 @@ function check(tools) {
 function halt(verdict) {
   const out = [
     '',
-    C.bold(C.red('  ⛔ attest: TOOL DEFINITIONS CHANGED SINCE YOU APPROVED THIS SERVER')),
+    C.bold(C.red('  ⛔ mcp-pin: TOOL DEFINITIONS CHANGED SINCE YOU APPROVED THIS SERVER')),
     '',
     `  server: ${label}`,
     `  id:     ${id}`,
@@ -193,6 +194,19 @@ function cmdApprove(k) {
 function cmdForget(k) {
   store.deletePin(k);
   process.stdout.write('forgotten; will re-pin on next connect\n');
+}
+
+// Verify a downloaded public log offline: chain integrity + signed head.
+function cmdVerifyLog(dir) {
+  const { PublicLog } = require('../crawler/log');
+  const target = dir || '.';
+  const r = new PublicLog(target).verify();
+  if (r.ok) {
+    process.stdout.write(`public log OK — ${r.count} entries, chain intact, head signature valid\n`);
+  } else {
+    process.stderr.write(`public log FAILED: ${r.reason}\n`);
+    process.exit(1);
+  }
 }
 
 function cmdVerify() {
