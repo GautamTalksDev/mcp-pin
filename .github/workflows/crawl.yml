@@ -23,6 +23,7 @@ jobs:
       - name: Crawl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LOG_PRIVATE_KEY: ${{ secrets.LOG_PRIVATE_KEY }}
         run: node crawler/crawl.js --allow-exec --concurrency 2 --delay-ms 250 --limit 800
 
       - name: Verify the log before anything is published

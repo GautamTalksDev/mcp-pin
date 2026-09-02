@@ -95,8 +95,8 @@ input::placeholder{color:var(--night-dim)}
 .row{display:flex;justify-content:space-between;gap:16px;align-items:center;
   padding:15px 18px;border:1px solid var(--night-rule);border-radius:10px;
   background:var(--night-2);margin-bottom:8px}
-.row .nm{font-size:16px}
-.row .nm a{border:0}
+.row .nm{font-size:16px;color:var(--night-fg)}
+.row .nm a{border:0;color:var(--night-fg)}
 .row .meta{color:var(--night-dim);font-size:13px;margin-top:3px}
 .right{text-align:right;white-space:nowrap}
 
