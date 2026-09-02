@@ -191,7 +191,7 @@ The log records **changes**, not heartbeats. A server that never changes produce
 Server authors can show their users that their definitions are stable and being watched.
 
 ```markdown
-[![mcp-pin](https://mcp-pin.dev/badge/<id>.svg)](https://mcp-pin.dev/servers/<id>.html)
+[![mcp-pin](https://mcp-pin.gautamkhosla.com/badge/<id>.svg)](https://mcp-pin.gautamkhosla.com/servers/<id>.html)
 ```
 
 The badge only ever states a fact about time. It says `unchanged 91d` or `changed today`. It never says "safe", because this project cannot know that and will not imply it.
@@ -203,8 +203,8 @@ The badge only ever states a fact about time. It says `unchanged 91d` or `change
 The point of a transparency log is that you do not have to trust the people running it. Every entry is hash linked to the one before it, and the head is signed with Ed25519.
 
 ```bash
-curl -O https://mcp-pin.dev/log.ndjson
-curl -O https://mcp-pin.dev/head.json
+curl -O https://mcp-pin.gautamkhosla.com/log.ndjson
+curl -O https://mcp-pin.gautamkhosla.com/head.json
 npx mcp-pin verify-log .
 ```
 

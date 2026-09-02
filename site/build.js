@@ -16,7 +16,7 @@ const args = process.argv.slice(2);
 const flag = (n, d) => { const i = args.indexOf(n); return i === -1 ? d : args[i + 1]; };
 const DATA = path.resolve(flag('--data', 'data'));
 const OUT = path.resolve(flag('--out', 'public'));
-const SITE = process.env.SITE_URL || 'https://mcp-pin.dev';
+const SITE = process.env.SITE_URL || 'https://mcp-pin.gautamkhosla.com';
 
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const strip = (s) => String(s).replace(/\x1b\[[0-9;]*m/g, '');
