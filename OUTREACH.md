@@ -19,3 +19,8 @@ Every send is logged the moment it goes out, not in a batch afterwards.
 | 13 | figma-console-mcp | southleft | 2026-09-02 | GitHub issue #124 | |
 | 14 | @currents/mcp | currents-dev | 2026-09-02 | GitHub issue #175 | |
 | 15 | @bitbonsai/mcpvault | Mauricio Wolff | 2026-09-02 | GitHub Discussion #224 | |
+| 16 | opencode-mcp | Alaeddine Messadi | 2026-09-02 | GitHub issue #19 | |
+| 17 | codebase-memory-mcp | DeusData | 2026-09-02 | GitHub Discussion | |
+| 18 | igniteui-theming | IgniteUI | 2026-09-02 | GitHub issue #602 | |
+| 19 | tavily-mcp | tavily-ai | 2026-09-02 | GitHub issue #207 | |
+| 20 | exa-mcp-server | exa-labs | 2026-09-02 | GitHub issue #427 | |
