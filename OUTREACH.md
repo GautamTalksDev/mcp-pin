@@ -14,3 +14,8 @@ Every send is logged the moment it goes out, not in a batch afterwards.
 | 8 | claude-flow / ruflo | ruvnet | 2026-09-02 | GitHub Discussion #3165 | |
 | 9 | @aashari/mcp-server-atlassian-jira | aashari | 2026-09-02 | GitHub issue #183 | |
 | 10 | @cyanheads/git-mcp-server | cyanheads | 2026-09-02 | GitHub issue #59 | |
+| 11 | kubernetes-mcp-server (containers) | containers org | 2026-09-02 | GitHub Discussion | |
+| 12 | mcp-searxng | Ihor Sokoliuk | 2026-09-02 | GitHub issue #267 | |
+| 13 | figma-console-mcp | southleft | 2026-09-02 | GitHub issue #124 | |
+| 14 | @currents/mcp | currents-dev | 2026-09-02 | GitHub issue #175 | |
+| 15 | @bitbonsai/mcpvault | Mauricio Wolff | 2026-09-02 | GitHub Discussion #224 | |
