@@ -11,6 +11,15 @@ const fs = require('fs');
 const path = require('path');
 const { PublicLog } = require('../crawler/log');
 const { badgeFor, days } = require('../crawler/badge');
+
+// Under a day, "0d" reads like a bug next to "changed today". Show hours.
+function span(fromISO) {
+  const ms = Date.now() - new Date(fromISO).getTime();
+  const d = Math.floor(ms / 86400000);
+  if (d >= 1) return d + 'd';
+  const h = Math.floor(ms / 3600000);
+  return h >= 1 ? h + 'h' : Math.max(1, Math.floor(ms / 60000)) + 'm';
+}
 const { renderToolDiff } = require('../src/diff');
 const { safeId } = require('../crawler/security');
 
@@ -286,7 +295,7 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
 <div class="facts">
 <div class="fact"><b>${s.tool_count}</b><span>tools</span></div>
 <div class="fact"><b>${hist.length}</b><span>recorded versions</span></div>
-<div class="fact"><b>${days(s.first_seen_at)}d</b><span>tracked</span></div>
+<div class="fact"><b>${span(s.first_seen_at)}</b><span>tracked</span></div>
 <div class="fact" style="padding-top:28px">${pill(s)}</div>
 </div>
 <section>
