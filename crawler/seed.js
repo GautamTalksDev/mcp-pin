@@ -17,6 +17,21 @@ const { fromNpm } = require('./discover');
 const { probe } = require('./probe');
 const { PublicLog } = require('./log');
 
+// Honour opt-out here too. The docs promise that adding a name stops the
+// crawling, and a seeder that ignored the list would make that a lie.
+function loadOptOut() {
+  const out = new Set();
+  for (const f of ['OPTOUT.txt', path.join(__dirname, '..', 'OPTOUT.txt')]) {
+    try {
+      for (const line of fs.readFileSync(f, 'utf8').split('\n')) {
+        const v = line.split('#')[0].trim().toLowerCase();
+        if (v) out.add(v);
+      }
+    } catch {}
+  }
+  return out;
+}
+
 const args = process.argv.slice(2);
 const flag = (n, d) => { const i = args.indexOf(n); return i === -1 ? d : args[i + 1]; };
 const has = (n) => args.indexOf(n) !== -1;
@@ -74,7 +89,9 @@ async function downloads(names) {
     catch { return { servers: {} }; }
   })();
 
-  const targets = ranked.slice(0, TOP);
+  const optout = loadOptOut();
+  const targets = ranked.filter((s) => !optout.has(s.name.toLowerCase())).slice(0, TOP);
+  if (optout.size) process.stderr.write(`honouring ${optout.size} opt-out entries\n`);
   const ok = [], failed = [];
 
   for (const s of targets) {

@@ -111,6 +111,10 @@ pre{background:var(--night);color:var(--night-fg);border-radius:12px;padding:18p
 code{font-family:var(--mono);font-size:14px;background:#f0f0ee;padding:2px 7px;border-radius:5px}
 .dark code{background:var(--night-2)}
 
+ul.body{max-width:62ch;color:var(--ink-2);padding-left:20px}
+ul.body li{margin-bottom:10px}
+ul.body strong,p.body strong{color:var(--ink)}
+p.body em{font-style:italic}
 footer{border-top:1px solid var(--rule);padding:44px 0 70px;color:var(--ink-3);font-size:14px}
 footer p{max-width:62ch;margin:0 0 10px}
 `;
@@ -129,12 +133,16 @@ function page(title, body, opts = {}) {
 <img src="/logo.svg" width="26" height="26" alt="">
 <b style="font-weight:500">mcp-pin</b><span class="sp"></span>
 <a href="/">Log</a><a href="${REPO}#quick-start">Install</a>
+<a href="/about.html">About</a>
 <a href="${REPO}/blob/main/docs/VERIFYING.md">Verify</a><a href="${REPO}">GitHub</a>
 </nav></div>
 ${body}
 <div class="wrap"><footer>
 <p>mcp-pin keeps a public, append-only record of MCP tool definitions. Every entry is hash linked and every head is signed, so you can <a href="/log.ndjson">download the log</a> and check it yourself with <code>npx mcp-pin verify-log</code>. You do not have to trust whoever runs this.</p>
 <p>Crawling is one <code>tools/list</code> per server per day. No tool is ever called. To opt out, add your server to <a href="${REPO}/blob/main/OPTOUT.txt">OPTOUT.txt</a> or open an issue. Honoured on the next crawl, no justification needed.</p>
+<p>Run by Gautam Khosla as an independent open-source project. Not affiliated with
+Anthropic, the Model Context Protocol project, or any server listed here.
+<a href="/about.html">About this project, and how to contact me</a>.</p>
 <p>MIT licensed. <a href="${REPO}">Source on GitHub</a>.</p>
 </footer></div></html>`;
 }
@@ -304,6 +312,77 @@ ${changes || '<p class="body">No changes recorded since tracking began. That is 
       `<?xml version="1.0"?><rss version="2.0"><channel><title>mcp-pin: ${esc(s.name)}</title>
 <link>${SITE}/servers/${s.id}.html</link><description>Tool definition changes</description>${items}</channel></rss>`);
   }
+
+  // ------------------------------------------------------------ about
+  fs.writeFileSync(path.join(OUT, 'about.html'), page('About mcp-pin', `
+<div class="wrap"><div class="hero" style="padding:52px 0 44px">
+<h1 class="big" style="font-size:clamp(32px,5vw,48px)">About this project</h1>
+<p class="lede">mcp-pin is an independent open-source project built and run by
+<a href="https://github.com/GautamTalksDev">Gautam Khosla</a>, a student. It is not affiliated with,
+endorsed by, or connected to Anthropic, the Model Context Protocol project, npm, GitHub,
+or any of the servers listed in the log.</p>
+</div>
+
+<section>
+<h2>What this site publishes</h2>
+<p class="body">A record of the tool metadata that public MCP servers return when asked.
+Names, descriptions, input schemas, and annotations, along with a cryptographic hash of each
+and the date it was observed. All of it is information those servers publish openly to any
+client that connects.</p>
+<p class="body">Nothing here is a security assessment. A badge reading
+<em>unchanged 91d</em> means the fingerprint has not moved in 91 days. It does not mean a
+server is safe, well written, or trustworthy, and it should never be read that way.</p>
+
+<h2 style="margin-top:52px">How the crawler behaves</h2>
+<p class="body">These are commitments, not aspirations. If the crawler ever violates one,
+that is a bug and I want to hear about it.</p>
+<ul class="body">
+<li>It identifies itself as <code>mcp-pin-crawler</code> with a link to the source repository.</li>
+<li>It calls <code>initialize</code> and <code>tools/list</code>. <strong>It never invokes a tool</strong>,
+never sends arguments, and never causes a side effect on anyone's system.</li>
+<li>It runs at most once per server per day. It is not a monitoring service and it does not poll.</li>
+<li>It never supplies a real credential and never attempts to bypass authentication.
+When a server exits because an environment variable is unset, the crawler reads the variable
+name the server itself printed and retries once with the obvious placeholder
+<code>mcp-pin-probe-placeholder</code>. Any server that validates that value rejects it. If a server
+still refuses, it is recorded as unindexable and left alone.</li>
+<li>A server that errors is not retried until the next day.</li>
+<li>Probing runs on disposable cloud infrastructure, never on a personal machine, and holds
+no credentials.</li>
+</ul>
+
+<h2 style="margin-top:52px">Opting out</h2>
+<p class="body">If you maintain a server here and do not want it crawled, say so and it stops.
+Add it to <a href="${REPO}/blob/main/OPTOUT.txt">OPTOUT.txt</a>, open an issue titled
+<code>opt out: your-server-name</code>, or email me. <strong>No justification is requested and
+none is required.</strong> You will not be asked to explain yourself and I will not try to
+talk you out of it.</p>
+<p class="body">It takes effect on the next crawl and the pages come down. One thing stated
+honestly rather than glossed over: the log is append-only by design, so entries already
+written stay in the file. If you need existing entries removed as well, ask, and I will
+publish a signed note explaining what was removed and why, because silently editing a
+transparency log would defeat its entire purpose.</p>
+
+<h2 style="margin-top:52px">Corrections</h2>
+<p class="body">If anything here is wrong about your server, tell me and I will fix it and
+say what changed. Accuracy matters more to this project than completeness.</p>
+
+<h2 style="margin-top:52px">No warranty</h2>
+<p class="body">This is provided as is, without warranty of any kind, under the
+<a href="${REPO}/blob/main/LICENSE">MIT licence</a>. It is a hobby research project run by one
+person alongside university study. Do not treat it as a commercial service, do not build a
+compliance process on it, and do not assume it will still be running next year.
+The <a href="${REPO}/blob/main/docs/THREAT_MODEL.md">threat model</a> is explicit about what
+the tool does not defend against.</p>
+
+<h2 style="margin-top:52px">Contact</h2>
+<p class="body">Security issues: see <a href="${REPO}/blob/main/SECURITY.md">SECURITY.md</a> and
+use GitHub's private reporting rather than a public issue.
+Everything else: <a href="${REPO}/issues">open an issue</a>.
+For anything you would rather not discuss in public, my contact details are on my
+<a href="https://github.com/GautamTalksDev">GitHub profile</a>.</p>
+</section></div>`,
+    { desc: 'Who runs mcp-pin, how the crawler behaves, and how to opt out.' }));
 
   fs.writeFileSync(path.join(OUT, 'api', 'servers.json'), JSON.stringify(servers, null, 2));
   process.stderr.write(`built ${servers.length} server pages into ${OUT}\n`);

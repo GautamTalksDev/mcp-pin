@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="site/logo.svg" width="88" height="88" alt="mcp-pin">
+
 # mcp-pin
 
 **The tool you approved is not the tool you're running.**
@@ -191,7 +193,7 @@ The log records **changes**, not heartbeats. A server that never changes produce
 Server authors can show their users that their definitions are stable and being watched.
 
 ```markdown
-[![mcp-pin](https://mcp-pin.gautamkhosla.com/badge/<id>.svg)](https://mcp-pin.gautamkhosla.com/servers/<id>.html)
+[![mcp-pin](https://mcp-pin.dev/badge/<id>.svg)](https://mcp-pin.dev/servers/<id>.html)
 ```
 
 The badge only ever states a fact about time. It says `unchanged 91d` or `changed today`. It never says "safe", because this project cannot know that and will not imply it.
@@ -203,8 +205,8 @@ The badge only ever states a fact about time. It says `unchanged 91d` or `change
 The point of a transparency log is that you do not have to trust the people running it. Every entry is hash linked to the one before it, and the head is signed with Ed25519.
 
 ```bash
-curl -O https://mcp-pin.gautamkhosla.com/log.ndjson
-curl -O https://mcp-pin.gautamkhosla.com/head.json
+curl -O https://mcp-pin.dev/log.ndjson
+curl -O https://mcp-pin.dev/head.json
 npx mcp-pin verify-log .
 ```
 
@@ -253,5 +255,17 @@ Zero runtime dependencies, Node 20 or newer. That is not minimalism for its own 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), how the pieces fit and why
 - [docs/OPERATIONS.md](docs/OPERATIONS.md), running the crawler without harming anyone
 - [docs/VERIFYING.md](docs/VERIFYING.md), auditing the log without trusting us
+
+## Who runs this
+
+An independent open-source project built and run by [Gautam Khosla](https://github.com/GautamTalksDev), a student. **Not affiliated with, endorsed by, or connected to** Anthropic, the Model Context Protocol project, npm, GitHub, or any server listed in the log.
+
+The crawler identifies itself, calls only `initialize` and `tools/list`, **never invokes a tool**, runs at most once per server per day, and never supplies a real credential or attempts to bypass authentication. Full policy: [docs/OPERATIONS.md](docs/OPERATIONS.md) and the [about page](https://mcp-pin.gautamkhosla.com/about.html).
+
+**A badge is not a safety rating.** `unchanged 91d` means the fingerprint has not moved in 91 days. It says nothing about whether a server is safe or trustworthy.
+
+**Opting out:** add your server to [OPTOUT.txt](OPTOUT.txt), open an issue titled `opt out: <name>`, or email me. No justification is requested and none is required.
+
+Provided as is, without warranty of any kind, under the [MIT licence](LICENSE). This is a hobby research project run by one person alongside university study. Do not build a compliance process on it.
 
 MIT licensed. Built by [Gautam Khosla](https://github.com/GautamTalksDev).
