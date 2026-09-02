@@ -10,3 +10,7 @@ Every send is logged the moment it goes out, not in a batch afterwards.
 | 4 | mcp-server-kubernetes | Flux159 | 2026-09-02 | GitHub issue #370 | |
 | 5 | ssh-mcp | Tufan Tunç | 2026-09-02 | GitHub issue #193 | |
 | 6 | comfyui-mcp | artokun | 2026-09-02 | GitHub Discussion #2756 (+ real drift detected, 3 tools) | |
+| 7 | @zereight/mcp-gitlab | zereight | 2026-09-02 | GitHub Discussion #719 | |
+| 8 | claude-flow / ruflo | ruvnet | 2026-09-02 | GitHub Discussion #3165 | |
+| 9 | @aashari/mcp-server-atlassian-jira | aashari | 2026-09-02 | GitHub issue #183 | |
+| 10 | @cyanheads/git-mcp-server | cyanheads | 2026-09-02 | GitHub issue #59 | |
