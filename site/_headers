@@ -1,0 +1,22 @@
+# Cloudflare Pages sends these as real HTTP headers. A CSP in a meta tag
+# cannot enforce frame-ancestors, so the policy belongs here.
+/*
+  Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), interest-cohort=()
+  X-Frame-Options: DENY
+
+/log.ndjson
+  Access-Control-Allow-Origin: *
+  Content-Type: application/x-ndjson
+
+/head.json
+  Access-Control-Allow-Origin: *
+
+/api/*
+  Access-Control-Allow-Origin: *
+
+/badge/*
+  Cache-Control: public, max-age=3600

@@ -5,7 +5,7 @@ The crawler touches other people's infrastructure. This page is about doing that
 ## The rules this crawler follows
 
 1. **Identify yourself.** Every request carries `mcp-pin-crawler/0.1` and a link back to the repository. Anyone wondering who is calling can find out in one search.
-2. **One `tools/list` per server per day.** The crawl runs once daily. It is not a monitoring service and it does not poll.
+2. **One `tools/list` per server per day.** This is a daily record, not real-time monitoring: a change can sit unrecorded for up to 24 hours.
 3. **Never call a tool.** The crawler calls `initialize` and `tools/list`. It never invokes a tool, never sends arguments, never causes a side effect on anyone's system.
 4. **Never authenticate.** When a server demands credentials, the crawler retries exactly once with an obvious placeholder value so the server will reach the point of listing tools. If it still refuses, the server is recorded as unindexable and left alone. No real credential is ever supplied, and no authentication is attempted or bypassed.
 5. **Back off on failure.** A server that errors is not hammered. The failure reason is recorded and the next attempt is the next daily run.

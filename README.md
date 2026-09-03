@@ -95,13 +95,15 @@ It lives in the README so it cannot be quietly renegotiated later.
 
 ---
 
-## Quick start
+## Protect one MCP server in 60 seconds
+
+Pick the server with the most access. Filesystem, GitHub, SSH, Kubernetes, a database, anything cloud. Put `mcp-pin` in front of it.
 
 ```bash
-npx mcp-pin -- <your mcp server command>
+npx --yes mcp-pin@0.1.0 -- <your mcp server command>
 ```
 
-Wrap any server, in any client, by editing your client config:
+Add it in front of a server in your client config:
 
 ```json
 {
@@ -117,7 +119,7 @@ Wrap any server, in any client, by editing your client config:
 First run pins. Every run after that verifies.
 
 ```
-$ npx mcp-pin -- node weather-server.js
+$ npx --yes mcp-pin@0.1.0 -- node weather-server.js
 mcp-pin: pinned 1 tool(s) for node weather-server.js (40c179188ad9)
 ```
 
@@ -156,6 +158,20 @@ When the server changes its mind about what its tools do:
 | `mcp-pin forget <id>` | Drop a pin, re-pin on next connect |
 | `mcp-pin verify` | Verify your local log chain |
 | `mcp-pin verify-log <dir>` | Verify a downloaded public log |
+
+### What it works with
+
+Dated, because this changes. Last verified **3 September 2026**.
+
+| | Status |
+|---|---|
+| stdio transport | Supported. This is the only transport the proxy speaks. |
+| HTTP and SSE transport | **Not supported by the proxy.** The public log crawls them; the proxy cannot yet sit in front of them. |
+| Claude Desktop | Tested, 2 Sep 2026 |
+| Cursor, Cline, Codex, OpenCode | Not yet verified by me. They speak stdio, so it should work; if you try one, tell me what happened and I will put the result in this table. |
+| Node | 20 or newer |
+
+I would rather this table be short and true than long and optimistic.
 
 ### What gets fingerprinted
 
@@ -212,7 +228,7 @@ The log records **changes**, not heartbeats. A server that never changes produce
 Server authors can show their users that their definitions are stable and being watched.
 
 ```markdown
-[![mcp-pin](https://mcp-pin.dev/badge/<id>.svg)](https://mcp-pin.dev/servers/<id>.html)
+[![mcp-pin](https://mcp-pin.gautamkhosla.com/badge/<id>.svg)](https://mcp-pin.gautamkhosla.com/servers/<id>.html)
 ```
 
 The badge only ever states a fact about time. It says `unchanged 91d` or `changed today`. It never says "safe", because this project cannot know that and will not imply it.
@@ -224,9 +240,9 @@ The badge only ever states a fact about time. It says `unchanged 91d` or `change
 The point of a transparency log is that you do not have to trust the people running it. Every entry is hash linked to the one before it, and the head is signed with Ed25519.
 
 ```bash
-curl -O https://mcp-pin.dev/log.ndjson
-curl -O https://mcp-pin.dev/head.json
-npx mcp-pin verify-log .
+curl -O https://mcp-pin.gautamkhosla.com/log.ndjson
+curl -O https://mcp-pin.gautamkhosla.com/head.json
+npx --yes mcp-pin@0.1.0 verify-log .
 ```
 
 ```
@@ -236,6 +252,16 @@ public log OK, 4812 entries, chain intact, head signature valid
 Change one byte of any historical entry and that command exits non zero. If this project ever quietly edited history, anyone holding an older copy could prove it.
 
 ---
+
+## How this differs from mcp-warden
+
+[mcp-warden](https://github.com/DataScience-EngineeringExperts/mcp-warden) is a lockfile and CI gate for the MCP server **you build**. It is at v1, it uses the same RFC 8785 plus SHA-256 canonicalization, and on schema diffing it is more thorough than this project: it classifies each mutation (required dropped, enum widened, type broadened, constraints relaxed) rather than reporting one opaque change, and it uploads SARIF to code scanning. It also inspects tool results at runtime.
+
+**If you maintain an MCP server and want a CI gate, use mcp-warden.** It is better at that job and it was there first.
+
+mcp-pin answers a different question. A lockfile tells you that your own server changed since your last commit. It cannot tell you what a third-party server's tools looked like last Tuesday, because nobody kept that record. This project keeps it: a public, hash-linked, signed history across every server it can reach, so you can look up a server you did not write and see what it used to say.
+
+One is a lockfile for what you ship. The other is a history for what you install.
 
 ## Honest limitations
 

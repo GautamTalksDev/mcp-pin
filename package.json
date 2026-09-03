@@ -37,5 +37,9 @@
   },
   "homepage": "https://github.com/GautamTalksDev/mcp-pin#readme",
   "bugs": "https://github.com/GautamTalksDev/mcp-pin/issues",
-  "author": "Gautam Khosla"
+  "author": "Gautam Khosla",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
 }

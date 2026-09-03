@@ -7,7 +7,7 @@ A transparency log is only worth something if you can check it yourself. This pa
 ```bash
 curl -O https://mcp-pin.gautamkhosla.com/log.ndjson
 curl -O https://mcp-pin.gautamkhosla.com/head.json
-npx mcp-pin verify-log .
+npx --yes mcp-pin@0.1.0 verify-log .
 ```
 
 ```

@@ -36,9 +36,9 @@ const strip = (s) => String(s).replace(/\x1b\[[0-9;]*m/g, '');
 
 const CSS = `
 :root{
-  --ink:#16181d; --ink-2:#5b6472; --ink-3:#8a94a3; --rule:#e4e7ec;
+  --ink:#16181d; --ink-2:#5b6472; --ink-3:#5c6572; --rule:#e4e7ec;
   --paper:#fbfbfa; --card:#fff;
-  --night:#0d1117; --night-2:#161b22; --night-fg:#e6edf3; --night-dim:#8b949e; --night-rule:#2b3138;
+  --night:#0d1117; --night-2:#161b22; --night-fg:#e6edf3; --night-dim:#a3adba; --night-rule:#2b3138;
   --grn:#1a7f37; --amb:#9a6700; --red:#cf222e;
   --grn-d:#3fb950; --amb-d:#d29922; --red-d:#f85149;
   --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
@@ -56,6 +56,21 @@ a:hover{border-bottom-color:var(--ink)}
 nav{display:flex;align-items:center;gap:12px;padding:26px 0;font-size:15px}
 nav .sp{flex:1}
 nav a{border:0;color:var(--ink-2)}nav a:hover{color:var(--ink)}
+@media(max-width:560px){
+  nav{flex-wrap:wrap;gap:10px 14px;padding:18px 0;font-size:14px}
+  nav .sp{flex-basis:100%;height:0}
+  .facts{flex-direction:column}
+  .fact{padding:16px 0}
+  h1.big{font-size:clamp(28px,8vw,38px)}
+}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.copy{margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.copy code{font-size:14px;padding:10px 14px;background:#f0f0ee;border-radius:8px}
+.copy button{padding:9px 14px;border:1px solid var(--rule);background:#fff;border-radius:8px;
+  font:inherit;font-size:13px;cursor:pointer;color:var(--ink-2)}
+.copy button:hover{border-color:var(--ink);color:var(--ink)}
+.changed-summary{border-left:3px solid var(--amb);padding:14px 0 14px 18px;margin:0 0 26px;
+  font-size:17px;color:var(--ink)}
 
 .hero{padding:64px 0 72px;border-bottom:1px solid var(--rule)}
 h1.big{font-size:clamp(38px,6vw,62px);line-height:1.06;letter-spacing:-.025em;
@@ -135,8 +150,13 @@ function page(title, body, opts = {}) {
 <meta name="referrer" content="no-referrer">
 <link rel="icon" type="image/svg+xml" href="/logo.svg">
 <meta property="og:title" content="${esc(title)}">
+<meta name="description" content="${esc(opts.desc || 'A public, signed history of what every MCP server\u2019s tools looked like, and when they changed.')}">
 <meta property="og:description" content="${esc(opts.desc || 'A public record of what every MCP server\u2019s tools looked like, and when they changed.')}">
 <meta property="og:type" content="website">
+<meta property="og:image" content="${SITE}/og.png">
+<meta property="og:url" content="${SITE}${opts.path || '/'}">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="${SITE}${opts.path || '/'}">
 <title>${esc(title)}</title><style>${CSS}</style>
 <div class="wrap"><nav>
 <img src="/logo.svg" width="26" height="26" alt="">
@@ -175,6 +195,36 @@ function diffHtml(oldC, newC, name) {
   }).join('\n');
 }
 
+// Registry metadata carries git+https://….git, which is not a link a human
+// wants to click. Normalise it.
+function homeUrl(u) {
+  if (!u) return '';
+  return String(u).replace(/^git\+/, '').replace(/\.git$/, '').replace(/^ssh:\/\/git@/, 'https://');
+}
+
+// One line a person can read before any diff: what actually moved.
+function changeSummary(prev, cur) {
+  const prevByName = new Map(prev.tools.map((t) => [t.name, t]));
+  let text = 0, schema = 0, added = 0, removed = 0;
+  for (const t of cur.tools) {
+    const o = prevByName.get(t.name);
+    if (o === undefined) { added++; continue; }
+    if (o.hash === t.hash) continue;
+    const od = JSON.parse(o.canonical_json).description || '';
+    const nd = JSON.parse(t.canonical_json).description || '';
+    if (od === nd) schema++; else text++;
+  }
+  const curNames = new Set(cur.tools.map((t) => t.name));
+  for (const t of prev.tools) if (curNames.has(t.name) === false) removed++;
+
+  const bits = [];
+  if (text) bits.push(`${text} description${text === 1 ? '' : 's'} rewritten`);
+  if (schema) bits.push(`<strong>${schema} schema or annotation change${schema === 1 ? '' : 's'} with the description left byte-identical</strong>`);
+  if (added) bits.push(`${added} tool${added === 1 ? '' : 's'} added`);
+  if (removed) bits.push(`${removed} tool${removed === 1 ? '' : 's'} removed`);
+  return { line: bits.join(', '), schema, total: text + schema + added + removed };
+}
+
 const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="background:#ffbd2e"></i><i style="background:#27c93f"></i></div>';
 
 (function main() {
@@ -189,6 +239,8 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
 
   for (const d of ['servers', 'badge', 'feed', 'api']) fs.mkdirSync(path.join(OUT, d), { recursive: true });
   fs.copyFileSync(path.join(__dirname, 'logo.svg'), path.join(OUT, 'logo.svg'));
+  const og = path.join(__dirname, 'og.png');
+  if (fs.existsSync(og)) fs.copyFileSync(og, path.join(OUT, 'og.png'));
   for (const f of ['log.ndjson', 'head.json']) {
     const p = path.join(DATA, f);
     if (fs.existsSync(p)) fs.copyFileSync(p, path.join(OUT, f));
@@ -197,6 +249,10 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
   const byChange = servers.slice().sort((a, b) =>
     new Date(b.last_change_at || 0) - new Date(a.last_change_at || 0));
   const recent = byChange.filter((s) => s.last_change_at && days(s.last_change_at) <= 30);
+  // The strongest single link on the page: a server that actually moved.
+  const newest = byChange.find((s) => s.last_change_at) || null;
+  const last24 = byChange.filter((s) => s.last_change_at &&
+    Date.now() - new Date(s.last_change_at).getTime() <= 86400000).length;
 
   const rows = byChange.map((s) => `<div class="row">
 <div><div class="nm"><a href="/servers/${s.id}.html">${esc(s.name)}</a></div>
@@ -212,9 +268,17 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
   A server can serve one set of tool definitions on Monday and a different set on Tuesday,
   and because descriptions are read by the model as instructions, a changed description
   reaches as far as a changed system prompt.</p>
-  <p class="lede">This is a public record of what those definitions were, and when they changed.</p>
-  <a class="cta" href="${REPO}">Pin your own tools</a>
-  <div class="cmd">npx mcp-pin -- &lt;your mcp server&gt;</div>
+  <p class="lede">mcp-pin freezes the names, descriptions, schemas and annotations a third-party
+  stdio MCP server exposes. If any of it changes, the connection stops before your agent sees it.
+  Separately, it keeps this public record of what those definitions were, and when they moved.</p>
+  <div class="copy">
+    <code id="cmd">npx --yes mcp-pin@0.1.0 -- &lt;your mcp server&gt;</code>
+    <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('cmd').innerText);this.textContent='copied'">copy</button>
+  </div>
+  <p style="margin-top:20px">
+    <a class="cta" href="${REPO}#protect-one-mcp-server-in-60-seconds">Protect one MCP server</a>
+    ${newest ? `<a style="margin-left:18px" href="/servers/${newest.id}.html">See a real change &rarr;</a>` : ''}
+  </p>
 </div></div>
 
 <div class="wrap"><section>
@@ -251,10 +315,11 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
     <div class="fact"><b>${servers.length}</b><span>servers tracked</span></div>
     <div class="fact"><b>${totalTools}</b><span>tool definitions recorded</span></div>
     <div class="fact"><b>${entries.length}</b><span>log entries</span></div>
-    <div class="fact"><b>${recent.length}</b><span>changed in 30 days</span></div>
+    <div class="fact"><b>${last24}</b><span>changed in the last 24 hours</span></div>
   </div>
-  <h2 style="margin-top:44px">The record</h2>
-  <input id="q" placeholder="Filter servers by name"
+  <h2 id="the-record" style="margin-top:44px">The record</h2>
+  <label for="q" style="display:block;font-size:14px;color:var(--night-dim);margin-bottom:8px">Filter servers by name</label>
+  <input id="q" aria-label="Filter servers by name" placeholder="e.g. firecrawl"
     oninput="for(const r of document.querySelectorAll('.row'))r.style.display=r.innerText.toLowerCase().includes(this.value.toLowerCase())?'':'none'">
   ${rows || '<p style="color:var(--night-dim)">No servers recorded yet. The crawler runs daily.</p>'}
 </div></div>`));
@@ -266,9 +331,12 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
     const latest = hist[hist.length - 1];
 
     let changes = '';
+    let headline = '';
     for (let i = hist.length - 1; i > 0; i--) {
       const cur = hist[i], prv = hist[i - 1];
       const prevByName = new Map(prv.tools.map((t) => [t.name, t]));
+      const sum = changeSummary(prv, cur);
+      if (i === hist.length - 1) headline = sum;
       const parts = [];
       for (const t of cur.tools) {
         const o = prevByName.get(t.name);
@@ -277,7 +345,9 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
       }
       const curNames = new Set(cur.tools.map((t) => t.name));
       for (const t of prv.tools) if (!curNames.has(t.name)) parts.push(`<p class="del">tool removed: ${esc(t.name)}</p>`);
-      changes += `<h3 style="margin-top:36px">Changed ${esc(cur.observed_at.slice(0, 10))}</h3>${parts.join('\n') || '<p class="body">Metadata changed.</p>'}`;
+      changes += `<h3 style="margin-top:36px">Changed ${esc(cur.observed_at.slice(0, 16).replace('T', ' '))} UTC</h3>`;
+      if (sum.line) changes += `<p class="changed-summary">${sum.line}.</p>`;
+      changes += parts.join('\n') || '<p class="body">Metadata changed.</p>';
     }
 
     const toolList = (latest ? latest.tools : []).map((t) =>
@@ -290,7 +360,7 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
       `<div class="wrap"><div class="hero" style="padding:44px 0 40px">
 <h1 class="big" style="font-size:clamp(30px,4.5vw,42px);max-width:24ch">${esc(s.name)}</h1>
 <p class="lede">${esc(s.description || 'No description published.')}</p>
-<p class="cmd">${esc(s.source)} · fingerprint ${esc(s.set_hash.slice(0, 24))}${s.homepage ? ` · <a href="${esc(s.homepage)}">homepage</a>` : ''} · <a href="/feed/${s.id}.xml">RSS</a></p>
+<p class="cmd">${esc(s.source)} · fingerprint ${esc(s.set_hash.slice(0, 24))}${s.homepage ? ` · <a href="${esc(homeUrl(s.homepage))}">repository</a>` : ''} · <a href="/feed/${s.id}.xml">RSS</a></p>
 </div>
 <div class="facts">
 <div class="fact"><b>${s.tool_count}</b><span>tools</span></div>
@@ -299,16 +369,29 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
 <div class="fact" style="padding-top:28px">${pill(s)}</div>
 </div>
 <section>
-<h2>Badge</h2>
-<p><img src="/badge/${s.id}.svg" alt="mcp-pin badge"></p>
-<p class="body">Add this to the README so users can see the definitions have not moved.</p>
+${changes
+  ? `<h2>What changed</h2>${changes}`
+  : '<h2>What changed</h2><p class="body">Nothing, since tracking began. That is the good outcome, and it is what most servers look like.</p>'}
+
+<h2 style="margin-top:56px">Current tools</h2>
+<details><summary style="cursor:pointer;color:var(--ink-2);padding:10px 0">Show all ${s.tool_count} tool fingerprints</summary>
+<div style="margin-top:14px">${toolList}</div>
+</details>
+
+<h2 style="margin-top:56px">Watch this server yourself</h2>
+<p class="body">If you run this server, put the proxy in front of it. It pins these exact
+fingerprints on first connect and stops the session if they move.</p>
+<div class="copy"><code>npx --yes mcp-pin@0.1.0 -- &lt;your ${esc(s.name)} command&gt;</code></div>
+<p class="body" style="margin-top:18px">Or subscribe to this page's <a href="/feed/${s.id}.xml">RSS feed</a>
+to be told when it changes.</p>
+
+<h2 style="margin-top:56px">Badge</h2>
+<p><img src="/badge/${s.id}.svg" alt="mcp-pin status badge for ${esc(s.name)}"></p>
+<p class="body">The badge states one fact about time and nothing else. It never claims a
+server is safe.</p>
 <pre>${esc(snippet)}</pre>
-<h2 style="margin-top:52px">Current tools</h2>
-${toolList}
-<h2 style="margin-top:52px">History</h2>
-${changes || '<p class="body">No changes recorded since tracking began. That is the good outcome.</p>'}
 </section></div>`,
-      { desc: `Tool definition history for ${s.name}.` }));
+      { desc: `Tool definition history for ${s.name}.`, path: `/servers/${s.id}.html` }));
 
     fs.writeFileSync(path.join(OUT, 'badge', s.id + '.svg'), badgeFor(s));
 
@@ -349,7 +432,7 @@ that is a bug and I want to hear about it.</p>
 <li>It identifies itself as <code>mcp-pin-crawler</code> with a link to the source repository.</li>
 <li>It calls <code>initialize</code> and <code>tools/list</code>. <strong>It never invokes a tool</strong>,
 never sends arguments, and never causes a side effect on anyone's system.</li>
-<li>It runs at most once per server per day. It is not a monitoring service and it does not poll.</li>
+<li>It runs at most once per server per day. This is a daily record, not real-time monitoring: a change can sit unrecorded for up to 24 hours.</li>
 <li>It never supplies a real credential and never attempts to bypass authentication.
 When a server exits because an environment variable is unset, the crawler reads the variable
 name the server itself printed and retries once with the obvious placeholder
@@ -391,7 +474,26 @@ Everything else: <a href="${REPO}/issues">open an issue</a>.
 For anything you would rather not discuss in public, my contact details are on my
 <a href="https://github.com/GautamTalksDev">GitHub profile</a>.</p>
 </section></div>`,
-    { desc: 'Who runs mcp-pin, how the crawler behaves, and how to opt out.' }));
+    { desc: 'Who runs mcp-pin, how the crawler behaves, and how to opt out.', path: '/about.html' }));
+
+  // ------------------------------------------------- robots, sitemap, 404
+  fs.copyFileSync(path.join(__dirname, '_headers'), path.join(OUT, '_headers'));
+  fs.writeFileSync(path.join(OUT, 'robots.txt'),
+    `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml\n`);
+
+  const urls = ['/', '/about.html'].concat(servers.map((s) => `/servers/${s.id}.html`));
+  fs.writeFileSync(path.join(OUT, 'sitemap.xml'),
+    '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+    urls.map((u) => `  <url><loc>${SITE}${u}</loc><lastmod>${new Date().toISOString().slice(0, 10)}</lastmod></url>`).join('\n') +
+    '\n</urlset>\n');
+
+  fs.writeFileSync(path.join(OUT, '404.html'), page('Not found', `
+<div class="wrap"><div class="hero" style="padding:80px 0">
+<h1 class="big" style="font-size:clamp(30px,5vw,46px)">That page is not here.</h1>
+<p class="lede">If you were looking for a server, it may not have been crawled yet, or its
+maintainer may have asked to be removed. Both happen.</p>
+<a class="cta" href="/">Search the public history</a>
+</div></div>`, { desc: 'Page not found.', path: '/404.html' }));
 
   fs.writeFileSync(path.join(OUT, 'api', 'servers.json'), JSON.stringify(servers, null, 2));
   process.stderr.write(`built ${servers.length} server pages into ${OUT}\n`);
