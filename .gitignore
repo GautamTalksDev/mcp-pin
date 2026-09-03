@@ -7,3 +7,6 @@ public/
 *.log
 *:Zone.Identifier
 .DS_Store
+OUTREACH.md
+DRAFTS.md
+crawler/outreach.js
