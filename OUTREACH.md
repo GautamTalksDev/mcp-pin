@@ -35,3 +35,13 @@ Every send is logged the moment it goes out, not in a batch afterwards.
 | hostinger-api-mcp | issue #67 | 3 tools added, 1 schema-only change |
 | firecrawl-mcp | discussion #392 | 24 tools changed, 1 removed, 2 added |
 | mcp-searxng | issue #267 | searxng_web_search 641 to 453 chars |
+
+## GitHub Action shipped 2026-09-03
+
+Replaced the badge as the ask, after Flux159 said badges are README noise.
+`uses: GautamTalksDev/mcp-pin@v1` — baseline lives in the maintainer's repo,
+no network calls. Selftest green in CI.
+
+| Server | Thread | Action offered |
+|---|---|---|
+| mcp-server-kubernetes | issue #370 | yes, replied to the badge feedback |
