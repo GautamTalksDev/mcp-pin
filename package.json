@@ -28,7 +28,8 @@
   "scripts": {
     "test": "node test/run.js",
     "crawl": "node crawler/crawl.js --allow-exec --concurrency 2",
-    "build": "node site/build.js"
+    "build": "node site/build.js",
+    "report": "node crawler/report.js"
   },
   "repository": {
     "type": "git",

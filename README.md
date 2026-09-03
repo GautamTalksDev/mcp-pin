@@ -235,6 +235,9 @@ Listed here rather than buried, because a security tool that oversells itself is
 ## Development
 
 ```bash
+npm run report                    # what changed since yesterday, and where
+npm run report -- --days 7        # a wider window
+npm run report -- --contacted     # only servers you have already written to
 node test/run.js                  # 26 tests, no dependencies
 npm run crawl -- --limit 25       # small crawl
 npm run build                     # build the site into public/
