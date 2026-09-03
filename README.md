@@ -165,6 +165,25 @@ The rule is simple. **If the model can read it, it is in scope.** Key order does
 
 ---
 
+## Catch it in your own CI
+
+If you maintain an MCP server, the useful place to notice a definition change is the pull request that makes it.
+
+```yaml
+- uses: GautamTalksDev/mcp-pin@v1
+  with:
+    command: node
+    args: dist/index.js
+```
+
+First run writes `.mcp-pin/tools.json`; commit it. After that every pull request that moves a tool definition gets a comment with the diff, and schema changes that leave the description untouched are called out first.
+
+**The baseline lives in your repository and nothing is sent anywhere.** There is a test in the suite that fails if the action ever contacts a remote host.
+
+Full options in [docs/ACTION.md](docs/ACTION.md).
+
+---
+
 ## The public log
 
 ```bash
@@ -227,7 +246,6 @@ Listed here rather than buried, because a security tool that oversells itself is
 | **Proxy transport** | stdio only. HTTP and SSE servers can be crawled but not yet proxied. |
 | **Crawl coverage** | Roughly 38% of npm discovered packages yield a toolset. Many are SDKs rather than servers, and many real servers authenticate before listing tools, so they cannot be indexed at all. |
 | **Day one malice is invisible** | This detects *change*. A server that ships hostile definitions on the very first connect and never changes them looks perfectly stable. |
-| **Servers with rotating content** | Some servers embed per-session values (auth URLs, tokens, timestamps) directly in their tool descriptions. Their fingerprint changes on every connect, so they will always read as changed and the badge tells you nothing. Observed in the wild on 3 Sep 2026. |
 | **Not a prompt injection defence** | It does not inspect content or judge intent. It reports that bytes differ. |
 | **Models sometimes catch this already** | Testing on 2 September 2026 showed Claude Desktop refusing obvious injected instructions in tool descriptions and warning the user unprompted. That defence depends on the payload being obvious. A deterministic check does not. |
 

@@ -1,0 +1,47 @@
+name: 'mcp-pin'
+description: 'Catch changes to your MCP server tool definitions in a pull request, including schema changes that leave the description untouched.'
+author: 'Gautam Khosla'
+branding:
+  icon: 'anchor'
+  color: 'green'
+
+inputs:
+  command:
+    description: 'Command that starts your MCP server over stdio, for example "node".'
+    required: false
+  args:
+    description: 'Arguments for that command, space separated, for example "dist/index.js".'
+    required: false
+  url:
+    description: 'URL of a streamable HTTP MCP server. Use this instead of command/args.'
+    required: false
+  baseline:
+    description: 'Path to the committed baseline file.'
+    required: false
+    default: '.mcp-pin/tools.json'
+  fail-on-change:
+    description: 'Fail the job when definitions change. Default is to warn and comment.'
+    required: false
+    default: 'false'
+  comment:
+    description: 'Post or update a comment on the pull request.'
+    required: false
+    default: 'true'
+  update-baseline:
+    description: 'Rewrite the baseline from what was observed. Use to accept a change.'
+    required: false
+    default: 'false'
+
+outputs:
+  changed:
+    description: 'true when the fingerprint differs from the baseline.'
+  set-hash:
+    description: 'Fingerprint of the whole tool set.'
+  tool-count:
+    description: 'Number of tools observed.'
+  schema-only-count:
+    description: 'Tools whose schema or annotations moved while the description stayed identical.'
+
+runs:
+  using: 'node20'
+  main: 'action/index.js'

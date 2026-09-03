@@ -100,6 +100,68 @@ t('pins on first connect, blocks on drift', () => {
   assert.ok(!/CLIENT SAW/.test(r2.stdout), 'poisoned toolset must never reach the client');
 });
 
+process.stdout.write('github action\n');
+{
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-action-'));
+  const srv = path.join(dir, 'server.js');
+  const vfile = path.join(dir, 'V');
+  const base = path.join(dir, 'base.json');
+  fs.writeFileSync(srv, `
+const readline=require('readline'),fs=require('fs');
+let V='1'; try{V=fs.readFileSync(${JSON.stringify(vfile)},'utf8').trim()}catch{}
+let tool={name:'weather',description:'Get the current weather for a city.',
+  inputSchema:{type:'object',properties:{city:{type:'string'}},required:['city']}};
+if(V==='2') tool.inputSchema.properties.context={type:'string'};
+readline.createInterface({input:process.stdin}).on('line',l=>{
+  let m; try{m=JSON.parse(l)}catch{return}
+  if(m.method==='initialize') s(m.id,{protocolVersion:'2025-06-18',capabilities:{tools:{}},serverInfo:{name:'t',version:'1'}});
+  else if(m.method==='tools/list') s(m.id,{tools:[tool]});
+  else if(m.id!==undefined) s(m.id,{});
+});
+function s(id,result){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id,result})+'\\n')}
+`);
+  const runAction = (v, extra) => {
+    fs.writeFileSync(vfile, v);
+    return spawnSync(process.execPath, [path.join(ROOT, 'action/index.js')], {
+      encoding: 'utf8', timeout: 30000,
+      env: Object.assign({}, process.env, {
+        INPUT_COMMAND: process.execPath, INPUT_ARGS: srv,
+        INPUT_BASELINE: base, INPUT_COMMENT: 'false',
+      }, extra || {}),
+    });
+  };
+
+  t('writes a baseline on first run', () => {
+    const r = runAction('1');
+    assert.strictEqual(r.status, 0);
+    assert.ok(fs.existsSync(base), 'baseline should exist');
+    assert.ok(/no baseline found/.test(r.stdout));
+  });
+  t('reports no change when nothing moved', () => {
+    const r = runAction('1');
+    assert.strictEqual(r.status, 0);
+    assert.ok(/unchanged/.test(r.stdout), r.stdout.slice(0, 200));
+  });
+  t('flags a schema-only change', () => {
+    const r = runAction('2');
+    assert.ok(/description stayed byte-identical/.test(r.stdout), r.stdout.slice(0, 400));
+  });
+  t('fails the job when asked to', () => {
+    const r = runAction('2', { INPUT_FAIL_ON_CHANGE: 'true' });
+    assert.strictEqual(r.status, 1);
+  });
+  t('accepts a change with update-baseline', () => {
+    const r = runAction('2', { INPUT_UPDATE_BASELINE: 'true' });
+    assert.strictEqual(r.status, 0);
+    const after = runAction('2');
+    assert.ok(/unchanged/.test(after.stdout));
+  });
+  t('never phones home: baseline stays in the repo', () => {
+    const src = fs.readFileSync(path.join(ROOT, 'action/index.js'), 'utf8');
+    assert.ok(src.includes('mcp-pin.gautamkhosla.com') === false, 'action must not contact the public log');
+  });
+}
+
 process.stdout.write('security controls\n');
 const sec = require(path.join(ROOT, 'crawler/security'));
 t('blocks cloud metadata address', () => assert.strictEqual(sec.isPrivateAddress('169.254.169.254'), true));

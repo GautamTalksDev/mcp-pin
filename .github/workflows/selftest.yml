@@ -1,0 +1,21 @@
+# The action, run against this repo's own demo server. If mcp-pin cannot
+# detect drift in its own CI, it has no business being in anyone else's.
+name: action selftest
+on: [push, pull_request]
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Fingerprint the demo server
+        uses: ./
+        with:
+          command: node
+          args: demo/rugpull-server.js
+          baseline: .mcp-pin/demo.json
+          comment: false
