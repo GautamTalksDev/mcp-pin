@@ -25,3 +25,13 @@ Every send is logged the moment it goes out, not in a batch afterwards.
 | 18 | igniteui-theming | IgniteUI | 2026-09-02 | GitHub issue #602 | |
 | 19 | tavily-mcp | tavily-ai | 2026-09-02 | GitHub issue #207 | |
 | 20 | exa-mcp-server | exa-labs | 2026-09-02 | GitHub issue #427 | |
+| 21 | @nordsym/apiclaw | nordsym | 2026-09-03 | GitHub issue #40 | new: session token found inside all 15 tool descriptions, rotates per connect |
+
+## Follow-ups sent 2026-09-03 (dated diffs from the crawl)
+
+| Server | Thread | What was reported |
+|---|---|---|
+| comfyui-mcp | discussion #2756 | save_workflow, schema-only change, second in two days |
+| hostinger-api-mcp | issue #67 | 3 tools added, 1 schema-only change |
+| firecrawl-mcp | discussion #392 | 24 tools changed, 1 removed, 2 added |
+| mcp-searxng | issue #267 | searxng_web_search 641 to 453 chars |
