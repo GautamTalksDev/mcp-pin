@@ -227,6 +227,7 @@ Listed here rather than buried, because a security tool that oversells itself is
 | **Proxy transport** | stdio only. HTTP and SSE servers can be crawled but not yet proxied. |
 | **Crawl coverage** | Roughly 38% of npm discovered packages yield a toolset. Many are SDKs rather than servers, and many real servers authenticate before listing tools, so they cannot be indexed at all. |
 | **Day one malice is invisible** | This detects *change*. A server that ships hostile definitions on the very first connect and never changes them looks perfectly stable. |
+| **Servers with rotating content** | Some servers embed per-session values (auth URLs, tokens, timestamps) directly in their tool descriptions. Their fingerprint changes on every connect, so they will always read as changed and the badge tells you nothing. Observed in the wild on 3 Sep 2026. |
 | **Not a prompt injection defence** | It does not inspect content or judge intent. It reports that bytes differ. |
 | **Models sometimes catch this already** | Testing on 2 September 2026 showed Claude Desktop refusing obvious injected instructions in tool descriptions and warning the user unprompted. That defence depends on the payload being obvious. A deterministic check does not. |
 
