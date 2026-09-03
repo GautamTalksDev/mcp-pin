@@ -45,3 +45,7 @@ no network calls. Selftest green in CI.
 | Server | Thread | Action offered |
 |---|---|---|
 | mcp-server-kubernetes | issue #370 | yes, replied to the badge feedback |
+| comfyui-mcp | discussion #2756 | action offered |
+| hostinger-api-mcp | issue #67 | action offered |
+| firecrawl-mcp | discussion #392 | action offered |
+| mcp-searxng | issue #267 | action offered |
