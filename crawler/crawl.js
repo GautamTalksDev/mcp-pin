@@ -145,4 +145,11 @@ function saveState(s) {
   };
   fs.writeFileSync(path.join(DATA, 'last-crawl.json'), JSON.stringify(summary, null, 2));
   process.stderr.write(JSON.stringify(summary, null, 2) + '\n');
+
+  // Probed servers are untrusted third-party processes. Some of them leave
+  // handles open (timers, sockets, orphaned children) which keeps Node alive
+  // long after the crawl is done. On CI that means the job hits its timeout
+  // and the log is never committed, which is worse than a failed crawl.
+  // The work is finished and flushed at this point, so exit deliberately.
+  process.exit(0);
 })();

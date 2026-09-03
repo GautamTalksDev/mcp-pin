@@ -11,6 +11,13 @@ const { canonicalize, fingerprintToolset, sha256 } = require(path.join(ROOT, 'sr
 const { PublicLog } = require(path.join(ROOT, 'crawler/log'));
 const { badgeFor } = require(path.join(ROOT, 'crawler/badge'));
 
+// The crawler refuses to mint a signing key in CI. Tests still need to sign
+// a throwaway log, so generate one here and hand it over explicitly.
+if (!process.env.LOG_PRIVATE_KEY) {
+  const { privateKey } = require('crypto').generateKeyPairSync('ed25519');
+  process.env.LOG_PRIVATE_KEY = privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64');
+}
+
 let pass = 0;
 function t(name, fn) {
   try { fn(); process.stdout.write(`  ok  ${name}\n`); pass++; }

@@ -23,16 +23,21 @@ jobs:
       - name: Crawl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          LOG_PRIVATE_KEY: ${{ secrets.LOG_PRIVATE_KEY }}
-        run: node crawler/crawl.js --allow-exec --concurrency 2 --delay-ms 250 --limit 800
+        # Bounded well under the job timeout so the commit step always runs.
+        # A partial crawl that gets committed beats a complete one that does not.
+        timeout-minutes: 100
+        run: node crawler/crawl.js --allow-exec --concurrency 3 --delay-ms 200 --limit 600
 
       - name: Verify the log before anything is published
+        if: always()
         run: node bin/attest.js verify-log data
 
       - name: Build the site
+        if: always()
         run: node site/build.js
 
       - name: Commit the log
+        if: always()
         run: |
           git config user.name  "mcp-pin-crawler"
           git config user.email "crawler@users.noreply.github.com"
