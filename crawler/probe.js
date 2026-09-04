@@ -12,6 +12,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const readline = require('readline');
 const { fingerprintToolset } = require('../src/canonical');
+const { collectAllTools } = require('../src/list-tools');
 const { LIMITS, safeFetch, assertSafeUrl, validateToolset } = require('./security');
 
 const PROTOCOL = '2025-06-18';
@@ -29,7 +30,7 @@ function detectMissingEnv(stderr) {
   for (const re of pats) { let m; while ((m = re.exec(stderr || ''))) names.add(m[1]); }
   return [...names].filter((n) => !['NODE_ENV', 'PATH', 'HOME', 'CI'].includes(n)).slice(0, 8);
 }
-const CLIENT_INFO = { name: 'mcp-pin-crawler', version: '0.1.0' };
+const CLIENT_INFO = { name: 'mcp-pin-crawler', version: '0.1.1' };
 
 function initMsg(id) {
   return {
@@ -67,9 +68,25 @@ function probeStdio(install, { timeoutMs = 45000, env = {} } = {}) {
       resolve(r);
     };
     const timer = setTimeout(() => finish({ ok: false, error: 'timeout' }), timeoutMs);
+    const pending = new Map();
+    let rpcId = 10;
 
     child.on('error', (e) => { clearTimeout(timer); finish({ ok: false, error: e.message }); });
-    child.on('exit', (code) => { clearTimeout(timer); finish({ ok: false, error: 'exited ' + code, stderr: errBuf, missingEnv: detectMissingEnv(errBuf) }); });
+    child.on('exit', (code) => {
+      for (const [, p] of pending) p.reject(new Error('exited ' + code));
+      pending.clear();
+      clearTimeout(timer);
+      finish({ ok: false, error: 'exited ' + code, stderr: errBuf, missingEnv: detectMissingEnv(errBuf) });
+    });
+    function sendRequest(method, params) {
+      const id = ++rpcId;
+      return new Promise((resolve, reject) => {
+        pending.set(id, { resolve, reject });
+        const msg = { jsonrpc: '2.0', id, method };
+        if (params !== undefined) msg.params = params;
+        try { child.stdin.write(JSON.stringify(msg) + '\n'); } catch (e) { pending.delete(id); reject(e); }
+      });
+    }
 
     let stdoutBytes = 0;
     readline.createInterface({ input: child.stdout }).on('line', (line) => {
@@ -79,11 +96,19 @@ function probeStdio(install, { timeoutMs = 45000, env = {} } = {}) {
       try { m = JSON.parse(line); } catch { return; }
       if (m.id === 1 && m.result) {
         child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
-        child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list' }) + '\n');
-      } else if (m.id === 2) {
-        clearTimeout(timer);
-        if (m.error) return finish({ ok: false, error: 'tools/list: ' + (m.error.message || 'error') });
-        finish({ ok: true, tools: (m.result && m.result.tools) || [] });
+        collectAllTools(sendRequest).then((tools) => {
+          clearTimeout(timer);
+          finish({ ok: true, tools });
+        }).catch((e) => {
+          clearTimeout(timer);
+          finish({ ok: false, error: 'tools/list: ' + e.message });
+        });
+      } else if (m.id != null && pending.has(m.id)) {
+        const p = pending.get(m.id);
+        pending.delete(m.id);
+        if (m.error) p.reject(new Error(m.error.message || 'rpc error'));
+        else if (!m.result) p.reject(new Error('malformed rpc result'));
+        else p.resolve(m.result);
       }
     });
 
@@ -134,10 +159,22 @@ async function probeHttp(install, { timeoutMs = LIMITS.HTTP_TIMEOUT_MS } = {}) {
   if (init.error) return { ok: false, error: 'initialize: ' + init.error };
   const sid = init.sid;
   await postRPC(install.url, { jsonrpc: '2.0', method: 'notifications/initialized' }, sid, 5000).catch(() => {});
-  const list = await postRPC(install.url, { jsonrpc: '2.0', id: 2, method: 'tools/list' }, sid, timeoutMs);
-  if (list.error) return { ok: false, error: 'tools/list: ' + list.error };
-  if (list.msg && list.msg.error) return { ok: false, error: list.msg.error.message || 'rpc error' };
-  return { ok: true, tools: (list.msg && list.msg.result && list.msg.result.tools) || [] };
+  let rpcId = 1;
+  try {
+    const tools = await collectAllTools(async (method, params) => {
+      const id = ++rpcId;
+      const body = { jsonrpc: '2.0', id, method };
+      if (params !== undefined) body.params = params;
+      const list = await postRPC(install.url, body, sid, timeoutMs);
+      if (list.error) throw new Error(list.error);
+      if (list.msg && list.msg.error) throw new Error(list.msg.error.message || 'rpc error');
+      if (!list.msg || list.msg.result == null) throw new Error('malformed tools/list');
+      return list.msg.result;
+    });
+    return { ok: true, tools };
+  } catch (e) {
+    return { ok: false, error: 'tools/list: ' + e.message };
+  }
 }
 
 // npx cold-resolves on every call, which is slow and times out under

@@ -129,8 +129,27 @@ function saveState(s) {
   });
 
   saveState(state);
-  const head = log.signHead();
-  const v = log.verify();
+  let treeSize;
+  try {
+    treeSize = log.entries().length;
+  } catch (e) {
+    process.stderr.write('log unreadable after crawl: ' + e.message + '\n');
+    process.exit(1);
+  }
+
+  // Signing happens on a separate runner that never executes crawled packages.
+  // Local crawls still sign if a key is present.
+  const hasKey = !!(process.env.LOG_PRIVATE_KEY || fs.existsSync(path.join(DATA, 'log-key.json')));
+  let head = { tree_size: treeSize };
+  let verified = false;
+  if (hasKey) {
+    head = log.signHead();
+    const v = log.verify();
+    verified = v.ok;
+    if (!v.ok) process.stderr.write('verify failed after signing: ' + v.reason + '\n');
+  } else {
+    process.stderr.write('no signing key present; leaving the head unsigned (sign job must sign)\n');
+  }
 
   const summary = {
     ran_at: new Date().toISOString(),
@@ -141,7 +160,7 @@ function saveState(s) {
     newly_recorded: newly,
     changed,
     log_size: head.tree_size,
-    log_verified: v.ok,
+    log_verified: verified,
   };
   fs.writeFileSync(path.join(DATA, 'last-crawl.json'), JSON.stringify(summary, null, 2));
   process.stderr.write(JSON.stringify(summary, null, 2) + '\n');

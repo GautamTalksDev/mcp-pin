@@ -7,7 +7,8 @@ A transparency log is only worth something if you can check it yourself. This pa
 ```bash
 curl -O https://mcp-pin.gautamkhosla.com/log.ndjson
 curl -O https://mcp-pin.gautamkhosla.com/head.json
-npx --yes mcp-pin@0.1.0 verify-log .
+curl -O https://mcp-pin.gautamkhosla.com/PUBLIC_KEY.txt
+npx --yes mcp-pin@0.1.1 verify-log .
 ```
 
 ```
@@ -25,7 +26,7 @@ flowchart LR
 
 1. **Chain integrity.** Each entry names its predecessor's hash. Editing entry 4 changes its hash, so entry 5's `prev_entry_hash` no longer matches, and so on to the end.
 2. **Entry integrity.** Each entry's `entry_hash` is SHA-256 over its own canonicalized content. Changing any field breaks it.
-3. **Head signature.** The head is Ed25519 signed. The public key is in the repository.
+3. **Head signature.** The head is Ed25519 signed. The verifier pins `PUBLIC_KEY.txt` from the package (and from the site root). It will not accept a head signed by whatever key arrives with the file. A missing head, a mismatched `tree_size`, and a malformed log all fail.
 
 Together: you cannot change history without either breaking the chain or forging a signature.
 

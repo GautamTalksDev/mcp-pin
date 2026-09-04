@@ -1,6 +1,6 @@
 # Threat model
 
-Last reviewed: 2 September 2026.
+Last reviewed: 4 September 2026.
 
 This document states what mcp-pin defends against, what it explicitly does not, and what an attacker who targets mcp-pin itself could try. It is mapped to the [OWASP Top 10 for LLM Applications 2026](https://owasp.org/www-project-top-10-for-large-language-model-applications/) (published 4 August 2026), the [OWASP Top 10 for Agentic Applications 2026](https://genai.owasp.org/) (ASI01 to ASI10), and STRIDE.
 
@@ -39,17 +39,19 @@ OWASP's stated direction for 2026 is containment over prevention. mcp-pin is a c
 
 | Threat | Control | Residual risk |
 |---|---|---|
-| Rug pull after approval | Pin at approval, re-hash every connect, block on any difference | The user can approve a malicious diff |
+| Silent tool-definition change after approval | Pin at approval, re-hash every connect, block on any difference. Client traffic is queued until the check completes | The user can approve a malicious diff |
 | Silent tool addition | Set hash covers additions and removals | None for stdio |
 | Schema widening to add an exfiltration parameter | Full input schema is fingerprinted | None |
 | Annotation tampering (readOnlyHint flipped) | Annotations are in scope | None |
-| Post hoc denial that a definition ever changed | Public hash linked, signed log | Only for servers the crawler can reach |
+| Paginated toolsets hiding tools on later pages | `collectAllTools` follows `nextCursor`, caps at 50, rejects loops and partial sets | A server that lies about pagination can still withhold tools; the pin then covers only what was returned |
+| Post hoc denial that a definition ever changed | Public hash linked, signed log | Only for servers the crawler can reach; records from crawls ≤0.1.0 ignored `nextCursor` |
 
 ## 3. What mcp-pin does not defend
 
 Stated plainly, because the gap matters more than the coverage.
 
 - **Day one malice.** A server hostile from its first connect that never changes is indistinguishable from an honest stable server. Fingerprinting proves consistency, never intent.
+- **A malicious program running as the same user.** It can delete `~/.mcp-pin` and re-pin itself. mcp-pin is a change detector, not a sandbox, and this will not be fixed at this architecture.
 - **Prompt injection through tool results.** Only metadata is fingerprinted. Content returned by a tool call is out of scope.
 - **A compromised MCP client.** If the client is malicious, a proxy in front of the server is irrelevant.
 - **Runtime behaviour.** A tool whose description is honest and whose implementation is not will pass every check.

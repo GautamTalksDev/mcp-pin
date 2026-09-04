@@ -5,7 +5,7 @@ The crawler touches other people's infrastructure. This page is about doing that
 ## The rules this crawler follows
 
 1. **Identify yourself.** Every request carries `mcp-pin-crawler/0.1` and a link back to the repository. Anyone wondering who is calling can find out in one search.
-2. **One `tools/list` per server per day.** This is a daily record, not real-time monitoring: a change can sit unrecorded for up to 24 hours.
+2. **Complete `tools/list` per server per day, following pagination.** Capped at 50 pages. A change can sit unrecorded for up to 24 hours. Versions ≤0.1.0 issued one `tools/list` and ignored `nextCursor`; those records are a floor, not a count.
 3. **Never call a tool.** The crawler calls `initialize` and `tools/list`. It never invokes a tool, never sends arguments, never causes a side effect on anyone's system.
 4. **Never authenticate.** When a server demands credentials, the crawler retries exactly once with an obvious placeholder value so the server will reach the point of listing tools. If it still refuses, the server is recorded as unindexable and left alone. No real credential is ever supplied, and no authentication is attempted or bypassed.
 5. **Back off on failure.** A server that errors is not hammered. The failure reason is recorded and the next attempt is the next daily run.
@@ -48,13 +48,13 @@ Useful flags:
 
 ```mermaid
 flowchart LR
-    A["GitHub Actions runner<br/>ephemeral, no secrets"] -->|"--allow-exec"| B["untrusted npm packages"]
+    A["GitHub Actions crawl job<br/>ephemeral, persist-credentials: false,<br/>no signing key"] -->|"--allow-exec"| B["untrusted npm packages"]
     A --> C[("unsigned log entries")]
-    C --> D["signing host<br/>holds the Ed25519 key"]
+    C --> D["GitHub Actions sign job<br/>fresh runner, holds the Ed25519 key"]
     D --> E[("signed head")]
 ```
 
-The runner that executes untrusted code and the host that holds the signing key are deliberately separate. A compromised runner can poison a crawl. It cannot forge a signature.
+The runner that executes untrusted code and the runner that holds the signing key are separate jobs on separate VMs. A compromised crawl can poison entries. It cannot forge a signature. The scheduled trigger is disabled until a pagination-complete re-crawl has been verified.
 
 ## Yield expectations
 

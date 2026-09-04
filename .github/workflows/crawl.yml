@@ -1,60 +1,85 @@
 name: crawl
 on:
-  schedule: [{ cron: '0 6 * * *' }]   # 06:00 UTC daily
+  # Disabled until a pagination-complete re-crawl has been verified. The
+  # crawler used to issue one tools/list and ignore nextCursor, so any
+  # paginated server in the public log is a truncated record. Re-enable
+  # the schedule after that re-crawl, not before.
+  # schedule: [{ cron: '0 6 * * *' }]
   workflow_dispatch:
-permissions: { contents: write }
+permissions: { contents: read }
 concurrency:
   group: crawl
   cancel-in-progress: false
+
 jobs:
   crawl:
     runs-on: ubuntu-latest
     timeout-minutes: 180
+    permissions: { contents: read }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      # Downloads and executes third-party npm packages. No secrets besides
+      # the default read-only token. The log signing key is never available
+      # on this runner: a compromised crawl must not be able to sign a head.
+      - name: Crawl
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        timeout-minutes: 100
+        run: node crawler/crawl.js --allow-exec --concurrency 3 --delay-ms 200 --limit 600
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: crawl-data
+          path: |
+            data/log.ndjson
+            data/state.json
+            data/last-crawl.json
+          retention-days: 7
+
+  sign:
+    needs: crawl
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions: { contents: write }
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
 
-      # This step downloads and executes third-party npm packages. It runs
-      # only on this ephemeral runner, with no secrets mounted beyond the
-      # default read-only token. The log signing key is deliberately NOT
-      # available here: a compromised crawl must not be able to sign a head.
-      - name: Crawl
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # Bounded well under the job timeout so the commit step always runs.
-        # A partial crawl that gets committed beats a complete one that does not.
-        timeout-minutes: 100
-        run: node crawler/crawl.js --allow-exec --concurrency 3 --delay-ms 200 --limit 600
+      - uses: actions/download-artifact@v4
+        with:
+          name: crawl-data
+          path: data
 
-      # Sign as a separate step. When this was done inside the crawl process
-      # the head silently stayed stale while 233 entries were appended, and
-      # the failure only surfaced at verify time.
       - name: Sign the log head
-        if: always()
         env:
           LOG_PRIVATE_KEY: ${{ secrets.LOG_PRIVATE_KEY }}
         run: |
           node -e "
-          const {PublicLog}=require('./crawler/log');
+          const fs=require('fs');
+          const {PublicLog,parsePublicKeyFile}=require('./crawler/log');
           const l=new PublicLog('data');
           const h=l.signHead();
           console.log('signed head, tree_size', h.tree_size);
-          const v=l.verify();
+          const trusted=parsePublicKeyFile(fs.readFileSync('PUBLIC_KEY.txt','utf8'));
+          const v=l.verify({trustedPublicKey:trusted});
           if(!v.ok){ console.error('verify failed after signing:', v.reason); process.exit(1); }
           "
 
       - name: Verify the log before anything is published
-        if: always()
         run: node bin/attest.js verify-log data
 
       - name: Build the site
-        if: always()
         run: node site/build.js
 
       - name: Commit the log
-        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

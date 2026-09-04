@@ -11,6 +11,18 @@ const path = require('path');
 const crypto = require('crypto');
 const { sha256, canonicalize } = require('../src/canonical');
 
+function parsePublicKeyFile(text) {
+  const m = String(text).match(/^[A-Za-z0-9+/=]{40,}$/m);
+  if (!m) throw new Error('PUBLIC_KEY.txt contains no key');
+  return m[0];
+}
+
+function pubFromPrivateB64(b64) {
+  const der = Buffer.from(b64, 'base64');
+  const priv = crypto.createPrivateKey({ key: der, format: 'der', type: 'pkcs8' });
+  return crypto.createPublicKey(priv).export({ format: 'der', type: 'spki' }).toString('base64');
+}
+
 class PublicLog {
   constructor(dir) {
     this.dir = dir;
@@ -50,11 +62,28 @@ class PublicLog {
   }
 
   entries() {
+    let raw;
     try {
-      return fs.readFileSync(this.file, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l));
-    } catch {
-      return [];
+      raw = fs.readFileSync(this.file, 'utf8');
+    } catch (e) {
+      if (e.code === 'ENOENT') return [];
+      throw e;
     }
+    if (!raw.trim()) return [];
+    const out = [];
+    const lines = raw.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i];
+      if (!l.trim()) continue;
+      try {
+        out.push(JSON.parse(l));
+      } catch (e) {
+        const err = new Error('malformed log at line ' + (i + 1));
+        err.cause = e;
+        throw err;
+      }
+    }
+    return out;
   }
 
   lastHash() {
@@ -93,6 +122,17 @@ class PublicLog {
     return this.entries().filter((e) => e.server_id === serverId);
   }
 
+  resolveTrustedKey(explicit) {
+    if (explicit) return explicit;
+    try {
+      return parsePublicKeyFile(fs.readFileSync(path.join(this.dir, 'PUBLIC_KEY.txt'), 'utf8'));
+    } catch {}
+    if (process.env.LOG_PRIVATE_KEY) {
+      try { return pubFromPrivateB64(process.env.LOG_PRIVATE_KEY); } catch {}
+    }
+    return null;
+  }
+
   // Sign the current head. Publish daily.
   signHead() {
     const { priv, pubB64 } = this.keys();
@@ -109,8 +149,20 @@ class PublicLog {
   }
 
   // Full offline verification: chain links, entry hashes, and head signature.
-  verify() {
-    const entries = this.entries();
+  // The trusted key is pinned by the caller (or PUBLIC_KEY.txt / LOG_PRIVATE_KEY).
+  // The public_key field on the head is compared against that pin; it is never
+  // trusted on its own — otherwise anyone could re-sign a forged log.
+  verify(opts) {
+    const trusted = this.resolveTrustedKey(opts && opts.trustedPublicKey);
+    if (!trusted) return { ok: false, reason: 'no trusted public key' };
+
+    let entries;
+    try {
+      entries = this.entries();
+    } catch (e) {
+      return { ok: false, reason: e.message || 'malformed log' };
+    }
+
     let prev = 'GENESIS';
     for (let i = 0; i < entries.length; i++) {
       const e = entries[i];
@@ -120,16 +172,31 @@ class PublicLog {
       if (sha256(canonicalize(copy)) !== e.entry_hash) return { ok: false, reason: `bad hash at ${i}` };
       prev = e.entry_hash;
     }
-    if (fs.existsSync(this.headFile)) {
-      const h = JSON.parse(fs.readFileSync(this.headFile, 'utf8'));
-      const { signature, public_key, ...body } = h;
-      const pub = crypto.createPublicKey({ key: Buffer.from(public_key, 'base64'), format: 'der', type: 'spki' });
-      const ok = crypto.verify(null, Buffer.from(canonicalize(body)), pub, Buffer.from(signature, 'base64'));
-      if (!ok) return { ok: false, reason: 'head signature invalid' };
-      if (h.root_hash !== prev) return { ok: false, reason: 'head does not match log tip' };
+
+    if (!fs.existsSync(this.headFile)) return { ok: false, reason: 'missing head' };
+
+    let h;
+    try {
+      h = JSON.parse(fs.readFileSync(this.headFile, 'utf8'));
+    } catch (e) {
+      return { ok: false, reason: 'malformed head' };
     }
+    if (!h || typeof h !== 'object' || !h.signature) return { ok: false, reason: 'malformed head' };
+    if (h.public_key !== trusted) return { ok: false, reason: 'head signed by untrusted key' };
+    if (h.tree_size !== entries.length) return { ok: false, reason: 'tree_size does not match log' };
+
+    const { signature, public_key, ...body } = h;
+    let pub;
+    try {
+      pub = crypto.createPublicKey({ key: Buffer.from(trusted, 'base64'), format: 'der', type: 'spki' });
+    } catch (e) {
+      return { ok: false, reason: 'unreadable trusted public key' };
+    }
+    const ok = crypto.verify(null, Buffer.from(canonicalize(body)), pub, Buffer.from(signature, 'base64'));
+    if (!ok) return { ok: false, reason: 'head signature invalid' };
+    if (h.root_hash !== prev) return { ok: false, reason: 'head does not match log tip' };
     return { ok: true, count: entries.length };
   }
 }
 
-module.exports = { PublicLog };
+module.exports = { PublicLog, parsePublicKeyFile };

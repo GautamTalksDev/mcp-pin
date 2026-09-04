@@ -12,7 +12,7 @@ Small project, one maintainer, university term in progress. Realistic expectatio
 ## Before opening a pull request
 
 ```bash
-node test/run.js     # all 26 must pass
+node test/run.js     # all tests must pass
 ```
 
 - No new runtime dependencies. This is a hard rule, not a preference. If something genuinely cannot be done with the standard library, open an issue and make the case first.

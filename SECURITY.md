@@ -40,6 +40,7 @@ Credit is given in the advisory unless you prefer otherwise. There is no bug bou
 **Out of scope**
 
 - Malicious MCP servers themselves. Report those to the registry hosting them
+- A malicious program running as the same user as the proxy. It can delete `~/.mcp-pin` and re-pin itself. That is an architectural limit of a local pin store, not a defect to report
 - Prompt injection through tool *results*, which this project does not claim to address
 - Social engineering of a user into approving a diff
 - Rate limits or availability of the public site
@@ -57,7 +58,7 @@ These are properties the project intends to preserve. A change that breaks one i
 2. **No network egress from the proxy by default.** Pinning is local. Submitting observations to the public log is opt in.
 3. **No credentials are read, transmitted, or logged.** The crawler runs with a minimal environment and the proxy touches only its own state directory.
 4. **The signing key never sits on a machine that executes untrusted code.**
-5. **Failure blocks.** If the proxy cannot verify, it stops the session rather than passing it through. Fail closed, always.
+5. **Failure blocks.** If the proxy cannot verify, it stops the session rather than passing it through. Fail closed, always. Corrupt pin or log state is an error, not an empty store.
 6. **Zero runtime dependencies.** A supply chain tool with a large dependency tree undermines its own argument.
 
 ## Running the crawler safely

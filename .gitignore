@@ -10,3 +10,8 @@ public/
 OUTREACH.md
 DRAFTS.md
 crawler/outreach.js
+.state-memory-mcp
+
+# vision-memory-mcp local database
+.vision-memory-mcp/
+.env

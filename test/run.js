@@ -4,12 +4,14 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const { canonicalize, fingerprintToolset, sha256 } = require(path.join(ROOT, 'src/canonical'));
+const { collectAllTools } = require(path.join(ROOT, 'src/list-tools'));
 const { PublicLog } = require(path.join(ROOT, 'crawler/log'));
 const { badgeFor } = require(path.join(ROOT, 'crawler/badge'));
+const ATTEST = path.join(ROOT, 'bin/attest.js');
 
 // The crawler refuses to mint a signing key in CI. Tests still need to sign
 // a throwaway log, so generate one here and hand it over explicitly.
@@ -72,6 +74,49 @@ t('tampering breaks verification', () => {
   fs.writeFileSync(log.file, lines.join('\n') + '\n');
   assert.strictEqual(log.verify().ok, false);
 });
+t('rejects a missing head', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-head-'));
+  const l = new PublicLog(d);
+  l.append({ server_id: 's', server_name: 'n', source: 'test', set_hash: 'h', tools: [] });
+  const r = l.verify({ trustedPublicKey: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=' });
+  assert.strictEqual(r.ok, false);
+  assert.match(r.reason, /missing head/);
+});
+t('rejects a mismatched tree_size', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-tree-'));
+  const l = new PublicLog(d);
+  l.append({ server_id: 's', server_name: 'n', source: 'test', set_hash: 'h', tools: [] });
+  const h = l.signHead();
+  h.tree_size = 99;
+  const crypto = require('crypto');
+  const der = Buffer.from(process.env.LOG_PRIVATE_KEY, 'base64');
+  const priv = crypto.createPrivateKey({ key: der, format: 'der', type: 'pkcs8' });
+  const { canonicalize } = require(path.join(ROOT, 'src/canonical'));
+  const body = { tree_size: 99, root_hash: h.root_hash, signed_at: h.signed_at };
+  const sig = crypto.sign(null, Buffer.from(canonicalize(body)), priv);
+  fs.writeFileSync(l.headFile, JSON.stringify(Object.assign({}, body, { signature: sig.toString('base64'), public_key: h.public_key }), null, 2));
+  const r = l.verify({ trustedPublicKey: h.public_key });
+  assert.strictEqual(r.ok, false);
+  assert.match(r.reason, /tree_size/);
+});
+t('rejects a malformed log', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-malform-'));
+  const l = new PublicLog(d);
+  fs.writeFileSync(l.file, 'garbage\n');
+  const r = l.verify();
+  assert.strictEqual(r.ok, false);
+  assert.match(r.reason, /malformed/);
+});
+t('rejects a head signed by an untrusted key', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-key-'));
+  const l = new PublicLog(d);
+  l.append({ server_id: 's', server_name: 'n', source: 'test', set_hash: 'h', tools: [] });
+  const h = l.signHead();
+  const r = l.verify({ trustedPublicKey: 'MCowBQYDK2VwAyEA00000000000000000000000000000000000000000000000=' });
+  assert.strictEqual(r.ok, false);
+  assert.match(r.reason, /untrusted key/);
+  assert.ok(h.public_key);
+});
 
 process.stdout.write('badge\n');
 t('never-changed server reads unchanged', () => {
@@ -87,9 +132,9 @@ process.stdout.write('proxy end to end\n');
 t('pins on first connect, blocks on drift', () => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-home-'));
   const state = path.join(home, 'connects');
-  const env = Object.assign({}, process.env, { ATTEST_HOME: home, RUGPULL_STATE: state });
+  const env = Object.assign({}, process.env, { MCP_PIN_HOME: home, ATTEST_HOME: home, RUGPULL_STATE: state });
   const client = path.join(__dirname, 'fake-client.js');
-  const cmd = [path.join(ROOT, 'bin/attest.js'), '--', process.execPath, path.join(ROOT, 'demo/rugpull-server.js')];
+  const cmd = [ATTEST, '--', process.execPath, path.join(ROOT, 'demo/rugpull-server.js')];
 
   const r1 = spawnSync(process.execPath, [client, process.execPath, ...cmd], { env, encoding: 'utf8', timeout: 20000 });
   assert.ok(/pinned 1 tool/.test(r1.stderr), 'expected pin on first run');
@@ -98,6 +143,106 @@ t('pins on first connect, blocks on drift', () => {
   const r2 = spawnSync(process.execPath, [client, process.execPath, ...cmd], { env, encoding: 'utf8', timeout: 20000 });
   assert.ok(/TOOL DEFINITIONS CHANGED/.test(r2.stderr), 'expected block on second run');
   assert.ok(!/CLIENT SAW/.test(r2.stdout), 'poisoned toolset must never reach the client');
+});
+t('pins both pages of a paginated tools/list', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-page-'));
+  const env = Object.assign({}, process.env, { MCP_PIN_HOME: home, PAGED: '1' });
+  const client = path.join(__dirname, 'fake-client.js');
+  const srv = path.join(__dirname, 'paged-server.js');
+  const r = spawnSync(process.execPath, [client, process.execPath, ATTEST, '--', process.execPath, srv], {
+    env, encoding: 'utf8', timeout: 20000,
+  });
+  assert.ok(/pinned 2 tool/.test(r.stderr), 'expected both pages pinned: ' + r.stderr.slice(0, 400));
+  const dir = path.join(home, 'pins.d');
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json') && !f.includes('.tmp.'));
+  assert.strictEqual(files.length, 1);
+  const body = fs.readFileSync(path.join(dir, files[0]), 'utf8');
+  assert.ok(body.includes('"alpha"'), body);
+  assert.ok(body.includes('"beta"'), body);
+});
+t('corrupt pins.json fails closed', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-corrupt-'));
+  fs.writeFileSync(path.join(home, 'pins.json'), '{"broken":');
+  const r = spawnSync(process.execPath, [ATTEST, 'list'], {
+    env: Object.assign({}, process.env, { MCP_PIN_HOME: home }),
+    encoding: 'utf8', timeout: 10000,
+  });
+  assert.notStrictEqual(r.status, 0, 'list must not exit 0 on corrupt pins');
+  assert.ok(/corrupt state/.test(r.stderr), r.stderr);
+  assert.ok(/pins\.json/.test(r.stderr), r.stderr);
+  assert.ok(!/no pinned servers yet/.test(r.stdout), r.stdout);
+});
+t('garbage log fails verify', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-glog-'));
+  fs.mkdirSync(path.join(home, 'pins.d'), { recursive: true });
+  fs.writeFileSync(path.join(home, 'log.ndjson'), 'garbage\n');
+  const r = spawnSync(process.execPath, [ATTEST, 'verify'], {
+    env: Object.assign({}, process.env, { MCP_PIN_HOME: home }),
+    encoding: 'utf8', timeout: 10000,
+  });
+  assert.notStrictEqual(r.status, 0, 'verify must not exit 0 on garbage log');
+  assert.ok(/corrupt state|BROKEN|malformed/i.test(r.stderr), r.stderr);
+});
+t('migrates legacy pins.json into pins.d', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-mig-'));
+  const id = 'aaaaaaaaaaaaaaaa';
+  fs.writeFileSync(path.join(home, 'pins.json'), JSON.stringify({ [id]: { id, label: 'legacy', setHash: 'h', tools: [] } }));
+  const r = spawnSync(process.execPath, [ATTEST, 'list'], {
+    env: Object.assign({}, process.env, { MCP_PIN_HOME: home }),
+    encoding: 'utf8', timeout: 10000,
+  });
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.ok(fs.existsSync(path.join(home, 'pins.json.migrated')));
+  assert.ok(!fs.existsSync(path.join(home, 'pins.json')));
+  assert.ok(fs.existsSync(path.join(home, 'pins.d', id + '.json')));
+  assert.ok(/legacy/.test(r.stdout), r.stdout);
+});
+t('does not persist token-shaped argv', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-secret-'));
+  const token = 'sk-live-supersecret-token-9f3a';
+  const env = Object.assign({}, process.env, { MCP_PIN_HOME: home });
+  const client = path.join(__dirname, 'fake-client.js');
+  const srv = path.join(__dirname, 'paged-server.js');
+  spawnSync(process.execPath, [client, process.execPath, ATTEST, '--', process.execPath, srv, '--api-key', token], {
+    env, encoding: 'utf8', timeout: 20000,
+  });
+  function dump(d) {
+    let s = '';
+    for (const f of fs.readdirSync(d)) {
+      const p = path.join(d, f);
+      s += fs.statSync(p).isDirectory() ? dump(p) : fs.readFileSync(p, 'utf8');
+    }
+    return s;
+  }
+  const dumped = dump(home);
+  assert.ok(!dumped.includes(token), 'token leaked into store');
+});
+t('queued tools/call does not run when definitions have drifted', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-race-'));
+  const state = path.join(home, 'side-state');
+  const effect = path.join(home, 'side-effect');
+  const env = Object.assign({}, process.env, { MCP_PIN_HOME: home, SIDE_STATE: state, SIDE_EFFECT: effect });
+  const client = path.join(__dirname, 'fake-client.js');
+  const srv = path.join(__dirname, 'side-effect-server.js');
+  const pin = spawnSync(process.execPath, [client, process.execPath, ATTEST, '--', process.execPath, srv], {
+    env, encoding: 'utf8', timeout: 20000,
+  });
+  assert.ok(/pinned 1 tool/.test(pin.stderr), pin.stderr.slice(0, 400));
+  assert.ok(!fs.existsSync(effect), 'first pin must not call the tool');
+
+  const race = path.join(home, 'race-client.js');
+  fs.writeFileSync(race, `
+    const {spawn}=require('child_process');
+    const p=spawn(process.argv[2], process.argv.slice(3), {stdio:['pipe','pipe','inherit']});
+    p.stdin.on('error',()=>{});
+    p.stdin.write(JSON.stringify({jsonrpc:'2.0',id:1,method:'initialize',params:{}})+'\\n');
+    p.stdin.write(JSON.stringify({jsonrpc:'2.0',id:2,method:'tools/call',params:{name:'write_flag',arguments:{}}})+'\\n');
+    setTimeout(()=>{try{p.kill()}catch{} process.exit(0);}, 4000);
+  `);
+  spawnSync(process.execPath, [race, process.execPath, ATTEST, '--', process.execPath, srv], {
+    env, encoding: 'utf8', timeout: 20000,
+  });
+  assert.ok(!fs.existsSync(effect), 'side-effect file must not exist after a blocked drifted session');
 });
 
 process.stdout.write('github action\n');
@@ -210,5 +355,94 @@ t('html special characters are escaped in server pages', () => {
     try { await sec.assertSafeUrl(url); } catch { threw = true; }
     t(`rejects ${why} url`, () => assert.ok(threw, url + ' should be rejected'));
   }
+
+  process.stdout.write('collectAllTools\n');
+  {
+    const pages = {
+      none: { tools: [{ name: 'zeta' }, { name: 'alpha' }], nextCursor: 'p2' },
+      p2: { tools: [{ name: 'beta' }] },
+    };
+    const tools = await collectAllTools(async (_m, params) => {
+      const key = params && params.cursor ? params.cursor : 'none';
+      if (!pages[key]) throw new Error('unexpected cursor ' + key);
+      return pages[key];
+    });
+    t('concatenates pages and sorts by name', () => {
+      assert.deepStrictEqual(tools.map((x) => x.name), ['alpha', 'beta', 'zeta']);
+    });
+  }
+  {
+    let threw = false;
+    try {
+      await collectAllTools(async () => ({ tools: [{ name: 'a' }], nextCursor: 'loop' }));
+    } catch { threw = true; }
+    t('throws on a cursor loop', () => assert.ok(threw));
+  }
+  {
+    let threw = false;
+    try {
+      await collectAllTools(async () => { throw new Error('rpc error'); });
+    } catch { threw = true; }
+    t('throws on a page error rather than returning a partial set', () => assert.ok(threw));
+  }
+  {
+    let page = 0;
+    let threw = false;
+    try {
+      await collectAllTools(async () => {
+        page++;
+        return { tools: [{ name: 't' + page }], nextCursor: 'c' + page };
+      });
+    } catch (e) { threw = /50 pages/.test(e.message); }
+    t('throws after 50 pages', () => assert.ok(threw));
+  }
+  {
+    const tools = await collectAllTools(async () => ({ tools: [{ name: 'only' }], nextCursor: '' }));
+    t('empty-string cursor terminates', () => assert.deepStrictEqual(tools.map((x) => x.name), ['only']));
+  }
+
+  process.stdout.write('concurrent pins\n');
+  {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-conc-'));
+    const n = 16;
+    const srv = path.join(__dirname, 'paged-server.js');
+    const client = path.join(__dirname, 'fake-client.js');
+    const procs = [];
+    for (let i = 0; i < n; i++) {
+      const env = Object.assign({}, process.env, { MCP_PIN_HOME: home });
+      procs.push(new Promise((resolve) => {
+        const p = spawn(process.execPath, [client, process.execPath, ATTEST, '--', process.execPath, srv, '--n=' + i], {
+          env, stdio: ['ignore', 'pipe', 'pipe'],
+        });
+        let stderr = '';
+        p.stderr.on('data', (d) => { stderr += d; });
+        p.on('close', (code) => resolve({ code, stderr }));
+      }));
+    }
+    const results = await Promise.all(procs);
+    const pinsDir = path.join(home, 'pins.d');
+    const pinFiles = fs.existsSync(pinsDir)
+      ? fs.readdirSync(pinsDir).filter((f) => /^[a-f0-9]+\.json$/i.test(f))
+      : [];
+    const logFile = path.join(home, 'log.ndjson');
+    const logLines = fs.existsSync(logFile)
+      ? fs.readFileSync(logFile, 'utf8').split('\n').filter((l) => l.trim())
+      : [];
+    t('concurrent pins persist every server', () => {
+      assert.strictEqual(pinFiles.length, n, 'pins.d count=' + pinFiles.length + ' results=' + results.map((r) => r.code).join(','));
+    });
+    t('concurrent pins append every log entry', () => {
+      assert.strictEqual(logLines.length, n, 'log lines=' + logLines.length);
+    });
+    t('concurrent pin log chain verifies', () => {
+      const r = spawnSync(process.execPath, [ATTEST, 'verify'], {
+        env: Object.assign({}, process.env, { MCP_PIN_HOME: home }),
+        encoding: 'utf8', timeout: 10000,
+      });
+      assert.strictEqual(r.status, 0, r.stderr);
+      assert.ok(/log ok/.test(r.stdout), r.stdout);
+    });
+  }
+
   process.stdout.write(`\n${pass} passed\n`);
 })();

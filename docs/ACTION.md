@@ -1,5 +1,7 @@
 # The GitHub Action
 
+> **Experimental.** This action is not part of the 0.1.1 release. Bootstrap instructions currently reference a package that is not on npm, and the baseline does not survive the runner. Prefer the local proxy (`npx mcp-pin@0.1.1`). Do not adopt this action in CI yet.
+
 Catch changes to your own tool definitions in the pull request that makes them.
 
 ```yaml

@@ -15,6 +15,14 @@
 /head.json
   Access-Control-Allow-Origin: *
 
+/PUBLIC_KEY.txt
+  Access-Control-Allow-Origin: *
+  Content-Type: text/plain; charset=utf-8
+
+/pagination-recrawl.json
+  Access-Control-Allow-Origin: *
+  Content-Type: application/json
+
 /api/*
   Access-Control-Allow-Origin: *
 

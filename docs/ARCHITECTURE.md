@@ -7,6 +7,9 @@ flowchart TB
     CAN["src/canonical.js<br/>RFC 8785 canonicalization + SHA-256"]
     CAN --> PROXY["bin/attest.js<br/>the proxy"]
     CAN --> CRAWL["crawler/<br/>discovery, probing, log"]
+    CAN --> LIST["src/list-tools.js<br/>paginated tools/list"]
+    LIST --> PROXY
+    LIST --> CRAWL
     CRAWL --> SITE["site/build.js<br/>static output"]
     PROXY --> STORE["src/store.js<br/>local pins + local log"]
 ```
@@ -24,6 +27,10 @@ Turns a tool object into exactly one string, then hashes it.
 
 The set hash exists because a rug pull that *adds* a tool is the same attack as one that mutates a tool. Per tool hashing alone would miss it.
 
+## src/list-tools.js
+
+Shared by the proxy and the crawler. `collectAllTools(sendRequest)` follows `nextCursor` until the cursor is null or empty, rejects a repeated cursor, caps at 50 pages, and returns tools sorted by name. A page that errors or fails to parse throws; a partial toolset is never returned as complete.
+
 ## bin/attest.js, the proxy
 
 A stdio shim. Client on one side, server on the other, JSON-RPC lines flowing through.
@@ -36,29 +43,29 @@ sequenceDiagram
 
     C->>P: initialize
     P->>S: initialize
-    S-->>P: result
-    P-->>C: result
-    Note over P: probe immediately, before the client can act
-    P->>S: tools/list (id: attest-probe)
-    S-->>P: tools
+    S-->>P: result (held)
+    Note over P: state LISTING → VERIFYING
+    P->>S: notifications/initialized
+    P->>S: tools/list (follow nextCursor)
+    S-->>P: complete toolset
     alt fingerprint matches the pin
-        P->>P: swallow the probe, continue normally
-    else fingerprint differs
-        P-->>C: JSON-RPC error
-        P->>P: print diff, kill the server, exit 42
+        P-->>C: initialize result
+        Note over P: state RELEASED, flush queued client messages
+    else fingerprint differs, or any error
+        Note over P: state BLOCKED, discard the queue, print diff, exit 42
     end
 ```
 
-The proxy issues **its own** `tools/list` immediately after initialize rather than waiting for the client's. This matters: if you wait, the poisoned definitions have already reached the model by the time you notice. Blocking after the model has read the payload is not blocking.
+The proxy issues **its own** `tools/list`, including pagination, and withholds the initialize response from the client until the fingerprint matches. Inbound client messages are queued from the first byte. On match they are flushed in order. On drift they are discarded. Versions ≤0.1.0 forwarded initialize immediately and probed in parallel, which meant a `tools/call` could run before the block.
 
-State lives in `~/.mcp-pin`: `pins.json` for current fingerprints and `log.ndjson` for a local hash linked history.
+State lives in `~/.mcp-pin`: `pins.d/<server_id>.json` for current fingerprints (atomic rename, no shared read-modify-write) and `log.ndjson` for a local hash-linked history guarded by an exclusive lock. A legacy `pins.json` is migrated once.
 
 ## crawler/
 
 | File | Job |
 |---|---|
 | `discover.js` | Find servers: npm keyword search, the MCP registry, GitHub topic `mcp-server` |
-| `probe.js` | Get `tools/list` over stdio or HTTP, with install, retry, and validation |
+| `probe.js` | Get a complete `tools/list` over stdio or HTTP, following `nextCursor`, with install, retry, and validation |
 | `log.js` | Append only hash linked log with Ed25519 signed heads |
 | `badge.js` | Deterministic SVG, pure function so it works in a build or a Worker |
 | `security.js` | SSRF guard, byte caps, toolset validation, identifier validation |
@@ -82,7 +89,8 @@ public/
 ├── feed/<id>.xml           per server RSS
 ├── api/servers.json        machine readable index
 ├── log.ndjson              the full log
-└── head.json               the signed head
+├── head.json               the signed head
+└── PUBLIC_KEY.txt          the pinned verifier key
 ```
 
 Everything on these pages is attacker controlled text, so everything is escaped and the CSP is `default-src 'none'`.

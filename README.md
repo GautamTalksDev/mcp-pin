@@ -75,9 +75,9 @@ flowchart LR
     PX -.->|optional submission| LG
 ```
 
-**The proxy** fingerprints every tool's full metadata at approval time and re-derives that decision on every connect. If anything changed, the session stops with a diff before a single byte reaches the model.
+**The proxy** fingerprints every tool's full metadata at approval time and re-derives that decision on every connect. If anything changed, including a change the server did not announce, the session is blocked with a diff. Client traffic is queued until that check completes; on drift, nothing queued is forwarded.
 
-**The public log** crawls MCP servers on a schedule, records every version of every tool definition, and keeps the history. Hash linked, signed, downloadable, and verifiable by anyone with no need to trust whoever publishes it.
+**The public log** crawls MCP servers on a schedule, records every version of every tool definition, and keeps the history. Hash linked, signed, downloadable, and verifiable by anyone with no need to trust whoever publishes it. The crawler follows `tools/list` pagination; versions ≤0.1.0 did not, and records from those crawls are a floor rather than a count for any paginated server.
 
 The tool never asks a model whether a change looks dangerous. It computes a hash and compares it. That is the whole design, and it is deliberate. A deterministic check keeps working when a model has a bad day, and it keeps working on the subtle changes a model would wave through.
 
@@ -100,7 +100,7 @@ It lives in the README so it cannot be quietly renegotiated later.
 Pick the server with the most access. Filesystem, GitHub, SSH, Kubernetes, a database, anything cloud. Put `mcp-pin` in front of it.
 
 ```bash
-npx --yes mcp-pin@0.1.0 -- <your mcp server command>
+npx --yes mcp-pin@0.1.1 -- <your mcp server command>
 ```
 
 Add it in front of a server in your client config:
@@ -119,8 +119,8 @@ Add it in front of a server in your client config:
 First run pins. Every run after that verifies.
 
 ```
-$ npx --yes mcp-pin@0.1.0 -- node weather-server.js
-mcp-pin: pinned 1 tool(s) for node weather-server.js (40c179188ad9)
+$ npx --yes mcp-pin@0.1.1 -- node weather-server.js
+mcp-pin: pinned 1 tool(s) for node [1 arg] (40c179188ad9)
 ```
 
 When the server changes its mind about what its tools do:
@@ -143,7 +143,7 @@ When the server changes its mind about what its tools do:
 +         "description": "Regional calibration data",
 +         "type": "string"
 
-  This session is blocked. Nothing was sent to the model.
+  This session is blocked. Queued calls were not forwarded to the server.
   Review the diff. If you accept it:  mcp-pin approve 10925a2854bb9568
 ```
 
@@ -182,6 +182,8 @@ The rule is simple. **If the model can read it, it is in scope.** Key order does
 ---
 
 ## Catch it in your own CI
+
+> **Experimental.** The GitHub Action is not part of the 0.1.1 release. Its bootstrap instructions currently reference a package that is not on npm, and the baseline does not survive the runner. Use the local proxy. Do not adopt the action in CI yet.
 
 If you maintain an MCP server, the useful place to notice a definition change is the pull request that makes it.
 
@@ -237,12 +239,13 @@ The badge only ever states a fact about time. It says `unchanged 91d` or `change
 
 ## Verify it yourself
 
-The point of a transparency log is that you do not have to trust the people running it. Every entry is hash linked to the one before it, and the head is signed with Ed25519.
+The point of a transparency log is that you do not have to trust the people running it. Every entry is hash linked to the one before it, and the head is signed with Ed25519. The verifier pins `PUBLIC_KEY.txt`; it will not accept a head signed by whatever key arrives with the file.
 
 ```bash
 curl -O https://mcp-pin.gautamkhosla.com/log.ndjson
 curl -O https://mcp-pin.gautamkhosla.com/head.json
-npx --yes mcp-pin@0.1.0 verify-log .
+curl -O https://mcp-pin.gautamkhosla.com/PUBLIC_KEY.txt
+npx --yes mcp-pin@0.1.1 verify-log .
 ```
 
 ```
@@ -263,14 +266,24 @@ mcp-pin answers a different question. A lockfile tells you that your own server 
 
 One is a lockfile for what you ship. The other is a history for what you install.
 
+## What this does not protect against
+
+mcp-pin detects when a server's tool definitions change between sessions, including changes the server did not announce. That is the claim the evidence supports.
+
+It does **not** protect you from a malicious program running as the same user. That program can delete `~/.mcp-pin` and re-pin itself. That is an architectural limit of a local pin store, not a bug, and it will not be "fixed" by writing the same files harder. Day-one malice that never changes is also invisible. A pin is not a safety rating.
+
+Versions ≤0.1.0 silently truncated paginated servers and silently lost concurrent pin writes while reporting success. Use 0.1.1.
+
 ## Honest limitations
 
 Listed here rather than buried, because a security tool that oversells itself is worse than no tool at all.
 
 | Limitation | Detail |
 |---|---|
+| **Same-user local package** | A process running as you can delete the pin store and re-pin itself. mcp-pin is not a sandbox. |
 | **Proxy transport** | stdio only. HTTP and SSE servers can be crawled but not yet proxied. |
 | **Crawl coverage** | Roughly 38% of npm discovered packages yield a toolset. Many are SDKs rather than servers, and many real servers authenticate before listing tools, so they cannot be indexed at all. |
+| **Paginated history before 0.1.1** | The crawler ignored `nextCursor`. A 4 September 2026 re-probe of all 248 recorded servers found 18 higher tool counts; **none of those 18 currently return `nextCursor`**. The extra tools were on page 1. See [the recrawl note](data/pagination-recrawl.json). |
 | **Day one malice is invisible** | This detects *change*. A server that ships hostile definitions on the very first connect and never changes them looks perfectly stable. |
 | **Not a prompt injection defence** | It does not inspect content or judge intent. It reports that bytes differ. |
 | **Models sometimes catch this already** | Testing on 2 September 2026 showed Claude Desktop refusing obvious injected instructions in tool descriptions and warning the user unprompted. That defence depends on the payload being obvious. A deterministic check does not. |
@@ -283,7 +296,7 @@ Listed here rather than buried, because a security tool that oversells itself is
 npm run report                    # what changed since yesterday, and where
 npm run report -- --days 7        # a wider window
 npm run report -- --contacted     # only servers you have already written to
-node test/run.js                  # 26 tests, no dependencies
+node test/run.js                  # no dependencies
 npm run crawl -- --limit 25       # small crawl
 npm run build                     # build the site into public/
 python3 -m http.server 8080 --directory public
@@ -303,12 +316,13 @@ Zero runtime dependencies, Node 20 or newer. That is not minimalism for its own 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), how the pieces fit and why
 - [docs/OPERATIONS.md](docs/OPERATIONS.md), running the crawler without harming anyone
 - [docs/VERIFYING.md](docs/VERIFYING.md), auditing the log without trusting us
+- [CHANGELOG.md](CHANGELOG.md), including what 0.1.0 silently got wrong
 
 ## Who runs this
 
 An independent open-source project built and run by [Gautam Khosla](https://github.com/GautamTalksDev), a student. **Not affiliated with, endorsed by, or connected to** Anthropic, the Model Context Protocol project, npm, GitHub, or any server listed in the log.
 
-The crawler identifies itself, calls only `initialize` and `tools/list`, **never invokes a tool**, runs at most once per server per day, and never supplies a real credential or attempts to bypass authentication. Full policy: [docs/OPERATIONS.md](docs/OPERATIONS.md) and the [about page](https://mcp-pin.gautamkhosla.com/about.html).
+The crawler identifies itself, calls `initialize` and `tools/list` (following pagination), **never invokes a tool**, runs at most once per server per day, and never supplies a real credential or attempts to bypass authentication. Full policy: [docs/OPERATIONS.md](docs/OPERATIONS.md) and the [about page](https://mcp-pin.gautamkhosla.com/about.html).
 
 **A badge is not a safety rating.** `unchanged 91d` means the fingerprint has not moved in 91 days. It says nothing about whether a server is safe or trustworthy.
 
