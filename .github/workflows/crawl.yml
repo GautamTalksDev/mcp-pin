@@ -33,7 +33,7 @@ jobs:
         timeout-minutes: 100
         run: node crawler/crawl.js --allow-exec --concurrency 3 --delay-ms 200 --limit 600
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: crawl-data
           path: |
@@ -87,5 +87,5 @@ jobs:
           git diff --staged --quiet || git commit -m "crawl: $(date -u +%F)"
           git push
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with: { name: site, path: public, retention-days: 30 }
