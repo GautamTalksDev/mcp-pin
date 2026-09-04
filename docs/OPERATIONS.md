@@ -54,7 +54,7 @@ flowchart LR
     D --> E[("signed head")]
 ```
 
-The runner that executes untrusted code and the runner that holds the signing key are separate jobs on separate VMs. A compromised crawl can poison entries. It cannot forge a signature. The scheduled trigger is disabled until a pagination-complete re-crawl has been verified.
+The runner that executes untrusted code and the runner that holds the signing key are separate jobs on separate VMs. `sign` requires `needs: crawl` and `if: success()`. A failed crawl does not get a signature. On 4 September 2026 a scheduled run of the old single-job workflow signed anyway (`52d6ac1`); that head was not rewritten. See `data/incomplete-crawl-2026-09-04.json`. The schedule stays off until that isolation has actually executed in CI.
 
 ## Yield expectations
 

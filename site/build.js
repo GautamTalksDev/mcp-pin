@@ -241,7 +241,7 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
   fs.copyFileSync(path.join(__dirname, 'logo.svg'), path.join(OUT, 'logo.svg'));
   const og = path.join(__dirname, 'og.png');
   if (fs.existsSync(og)) fs.copyFileSync(og, path.join(OUT, 'og.png'));
-  for (const f of ['log.ndjson', 'head.json', 'pagination-recrawl.json']) {
+  for (const f of ['log.ndjson', 'head.json', 'pagination-recrawl.json', 'incomplete-crawl-2026-09-04.json']) {
     const p = path.join(DATA, f);
     if (fs.existsSync(p)) fs.copyFileSync(p, path.join(OUT, f));
   }
@@ -324,6 +324,8 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
   On 4 September 2026 every recorded server was re-probed with a crawler that follows
   <code>tools/list</code> pagination. 18 of 248 had a higher tool count; 0 of those 18 currently
   return <code>nextCursor</code>. The extra tools were on page 1.
+  The 10:53 UTC signed head that day covers a <em>failed</em> crawl that still signed
+  (<a href="/incomplete-crawl-2026-09-04.json">note</a>).
   <a href="/about.html">What that means</a> · <a href="/pagination-recrawl.json">the numbers</a></p>
   <h2 id="the-record" style="margin-top:44px">The record</h2>
   <label for="q" style="display:block;font-size:14px;color:var(--night-dim);margin-bottom:8px">Filter servers by name</label>
@@ -446,6 +448,14 @@ that paginated then and does not now cannot be proven either way. The machine-re
 record is <a href="/pagination-recrawl.json">pagination-recrawl.json</a>.</p>
 <p class="body">A signed log that quietly corrected itself would be worse than one that did not
 need correcting. Publishing this is the correction.</p>
+
+<h2 style="margin-top:52px">Incomplete crawl, 4 September 2026 10:53 UTC</h2>
+<p class="body">The signed head at <code>52d6ac1</code> (<code>tree_size</code> 281, signed 10:53 UTC) was produced
+by a <em>failed</em> scheduled crawl. The Crawl step failed; Sign, Verify, and Commit still ran
+because those steps used <code>if: always()</code> in a single job that also executed untrusted
+packages. Eighteen entries were appended. <code>last-crawl.json</code> was not updated. The chain
+verifies; the coverage does not. The log was not rewritten. Machine-readable note:
+<a href="/incomplete-crawl-2026-09-04.json">incomplete-crawl-2026-09-04.json</a>.</p>
 
 <h2 style="margin-top:52px">What this does not protect against</h2>
 <p class="body">mcp-pin detects when a server's tool definitions change between sessions,

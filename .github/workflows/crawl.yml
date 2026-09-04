@@ -1,9 +1,6 @@
 name: crawl
 on:
-  # Disabled until a pagination-complete re-crawl has been verified. The
-  # crawler used to issue one tools/list and ignore nextCursor, so any
-  # paginated server in the public log is a truncated record. Re-enable
-  # the schedule after that re-crawl, not before.
+  # Stay off the schedule until crawl/sign isolation has actually run in CI.
   # schedule: [{ cron: '0 6 * * *' }]
   workflow_dispatch:
 permissions: { contents: read }
@@ -24,9 +21,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
 
-      # Downloads and executes third-party npm packages. No secrets besides
-      # the default read-only token. The log signing key is never available
-      # on this runner: a compromised crawl must not be able to sign a head.
+      # Untrusted npm packages. This job must never see LOG_PRIVATE_KEY.
+      # A failed crawl must fail the job: do not use if: always() here.
       - name: Crawl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -43,7 +39,12 @@ jobs:
           retention-days: 7
 
   sign:
+    # Default skip-on-failure is not enough to document. A failed crawl
+    # must never reach a runner that holds the signing key. The 2026-09-04
+    # scheduled run used if: always() in a single job and signed a partial
+    # crawl (52d6ac1). That is forbidden.
     needs: crawl
+    if: success()
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions: { contents: write }

@@ -1,0 +1,10 @@
+# BEGIN WEPPY SYNC RUNTIME
+.sync-config.json
+.project-meta.json
+observability/
+place_*/.sync-index.json
+place_*/.sync-meta.json
+place_*/observability/
+place_*/.sync-migration-backups/
+place_*/.sync-migration-stage/
+# END WEPPY SYNC RUNTIME

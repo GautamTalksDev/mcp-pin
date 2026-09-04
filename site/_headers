@@ -23,6 +23,10 @@
   Access-Control-Allow-Origin: *
   Content-Type: application/json
 
+/incomplete-crawl-2026-09-04.json
+  Access-Control-Allow-Origin: *
+  Content-Type: application/json
+
 /api/*
   Access-Control-Allow-Origin: *
 

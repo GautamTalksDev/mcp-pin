@@ -1,0 +1,123 @@
+## State Memory (state-memory-mcp)
+
+This project tracks workflow state, tasks, design decisions, and blockers using `state-memory-mcp` with project slug `"mcp-pin"`.
+
+### 1. Priority Order
+Before doing any coding or investigation:
+1. `manage_sessions(action: "start")` — Start a tracking session for full change attribution.
+2. `get_analytics(action: "summary")` — Run to understand current project state, active branches, and overall progress.
+3. `manage_tasks(action: "next")` — Query prioritized runnable tasks.
+4. `manage_tasks(action: "find_blockers")` — Identify any active blockers preventing progress.
+5. `manage_nodes(action: "list")` — Find pending tasks, past decisions, or milestones.
+6. `query_graph(action: "trace")` — Trace what depends on or blocks a task.
+
+### 2. When to Write to the Graph
+You MUST update the graph as you work:
+- **Starting a session**: Always call `manage_sessions(action: "start", agent_id: "my-agent")` to track all mutations under a unique session.
+- **Starting a new task**: Create a node with `manage_nodes(action: "create", type: "task", title: "...", session_id: session_id)`.
+- **Making a design or implementation decision**: Document it with `manage_nodes(action: "create", type: "decision", title: "...", metadata: { "rationale": "..." }, session_id: session_id)`.
+- **Encountering a blocker**: Record the blocker with `manage_nodes(action: "create", type: "blocker", title: "...", session_id: session_id)` and connect it using `manage_edges(action: "add", type: "blocks", source_id: blocker_id, target_id: task_id, session_id: session_id)`.
+- **Adding observation notes**: Atomically log notes using `manage_nodes(action: "add_note", text: "...", attach_to: node_id)`.
+- **Batch updates**: Bulk update tasks/nodes using `manage_nodes(action: "batch_update", ids: ["..."], status: "done")`.
+- **Completing a task**: Update status to done using `manage_tasks(action: "complete", task_id: task_id)` or `manage_nodes(action: "update", id: task_id, status: "done")`.
+- **Creating/generating a new file**: Create an artifact node with `manage_nodes(action: "create", type: "artifact", title: "...", session_id: session_id)` and connect it using `manage_edges(action: "add", type: "produces", source_id: task_id, target_id: artifact_id)`.
+
+### 3. Workflow Pattern
+1. **Start of session**: Call `manage_sessions(action: "start")` to align and track work, then run `get_analytics(action: "summary")`, `manage_tasks(action: "next")`, and `manage_tasks(action: "find_blockers")`.
+2. **Task decomposition**: Decompose user requests into tasks and add them to the graph.
+3. **Execution**: Mark tasks as "in_progress", document design decisions as they occur, and log blockers if you hit any obstacles.
+4. **Validation & Resolution**: Run `run_diagnostics(action: "validate")` to ensure no cycles/orphans/contradictions, mark tasks as "done", document completed artifacts, and resolve blockers. Call `manage_sessions(action: "end")` to finalize.
+
+### 4. Codebase Seeding on Initialization
+If the project was just initialized or is missing high-level structure (Plans, Milestones, Decisions):
+1. **Inspect the Codebase**: Read the README and core files to understand the roadmap and architecture.
+2. **Scaffold the Roadmap**: Create a `plan` node (e.g., "Project Roadmap") and add `milestone` nodes representing key target phases, connecting them using `part_of` edges.
+3. **Scaffold Architecture**: Create `decision` nodes representing core technical choices (e.g., choice of databases, frameworks) and link them to the milestones/tasks using `decided_in` edges.
+
+<!-- vision-memory-mcp:start -->
+## Visual Memory (vision-memory-mcp)
+
+This project utilizes `vision-memory-mcp` to cache visual states, record layout transitions, provide element grounding, and avoid repetitive LLM vision calls.
+
+### 1. Mandatory Workflow & Priority
+1. **Orient**: Call `get_session_context` to align your visual state context at the start of work.
+2. **Search**: Call `recall_memory` (text/image search) before recreating duplicate UI state paths.
+3. **Ingest/Verify**: ALWAYS call `analyze_screenshot` before querying any front-end vision models.
+   - **Cache Hit (`is_known: true`)**: Do NOT use vision models; read the returned `description` as context and use `grounded_elements` (selectors, coordinates) for action target selection.
+   - **Cache Miss (`is_known: false`)**: Query your vision model, then run `analyze_screenshot` with both the image and description to seed the cache.
+4. **Action Target Execution**: Use `predict_next_action` to retrieve `grounded_target` handles (`target_selector`, `target_coords`) for deterministic UI clicks and typing.
+5. **Transitions**: Call `record_outcome` after every click/type/scroll action to construct navigation paths.
+6. **Privacy & Cleanup**: Call `forget_state` to purge sensitive or secret states from storage.
+
+### 2. Tool Reference Summary (15 Core MCP Tools)
+* `analyze_screenshot`: Ingest screenshot(s) (single or batch via `items`), lookup cache, return layout description and grounded elements.
+* `recall_memory`: Search visual memory by description query or base64 image query (read-only).
+* `record_outcome`: Save UI action execution outcomes, transitions, or log visual blockers (`action_type: 'blocker'`).
+* `get_navigation_paths`: Find path between states using BFS navigation graph.
+* `predict_next_action`: Predict best next UI action and target coordinates based on transition success rates and AX tree grounding.
+* `compare_states`: Compare visual states structurally (`has_layout_change`) or compare video recordings (`video_a_id`/`video_b_id`).
+* `get_session_context`: Fetch aggregated visual context, recent/frequent states, transitions, cache hit ratios, token savings metrics, and server version info.
+* `manage_snapshot`: Unified snapshot management (`save`, `diff`, `export`, `restore`) for visual checkpoints and regression detection.
+* `manage_visual_spec`: Visual SDD design contract baseline registration (`set`), live verification (`verify`), and listing (`list`).
+* `manage_video`: Unified video memory operations for ingestion (`ingest`), semantic search (`search`), and keyframe timelines (`timeline`).
+* `create_evidence_pack`: Create cryptographic, multi-modal evidence pack linking video keyframes, state graph tasks, and visual proof.
+* `export_trajectories`: Export multimodal visual transitions and joint workflow trajectories (`json`, `llava`, `qwen2_vl`, `joint`).
+* `undo_visual_mutation`: Revert accidental state or transition edge ingestions.
+* `forget_state`: Purge a specific state and vector embedding from storage for privacy.
+* `wait_for_visual_state`: Poll for target visual state until present or timeout occurs.
+
+#### 3. Agent Permissions & Auto-Run Configuration
+To allow cache query and ingestion commands to run automatically without prompting:
+* **Google Antigravity (`~/.gemini/config/config.json`)**: Add these rules to your `"globalPermissionGrants"` -> `"allow"` list:
+  * `"command(vision-memory-mcp)"` (Allow running the CLI without parameters prompts)
+  * `"read_file(.*\\.gemini/antigravity/brain/.*)"` (Allow reading captured screenshots)
+  * `"write_file(.*\\.gemini/antigravity/brain/.*)"` (Allow saving visual states)
+* **VS Code / Cursor IDE (`settings.json`)**: Ensure the agent has execution permissions for `command(vision-memory-mcp)` and read/write access to the workspace's local `.vision-memory-mcp/` cache directory.
+<!-- vision-memory-mcp:end -->
+
+<!-- qiksy-bridge:start -->
+## Browser: Qiksy bridge (`qa_*` tools) — the FIRST browser tool in this project
+
+The `qa_*` MCP tools drive **the browser that is already open**, with the real profile and the
+real logins. Full guide: [.claude/qiksy-bridge.md](.claude/qiksy-bridge.md).
+
+**Order of preference, and it is not a tie.** For anything that happens in a browser, reach for
+the `qa_*` tools first — every time, including when another browser driver is configured in this
+project. Hand over to a different driver only after the bridge has genuinely run out of road, and
+only in this order: (1) name out loud which of the two missing capabilities the task needs
+(**pixels** or **eval** — see below), (2) look at what the environment actually offers, (3) say
+which tool you are switching to and why, (4) go back to the bridge for the rest of the run. A
+control that refused, an unfamiliar widget or a slow page is NOT running out of road.
+
+- **Do not switch to another browser driver** (Playwright, Puppeteer, Selenium, CDP) because a
+  control looked unfamiliar or refused once. A second driver opens a DIFFERENT, EMPTY browser —
+  none of these logins are in it, so the run stops being the test that was asked for.
+- Only **one** thing is genuinely absent now: **eval** (no arbitrary
+  JS — a Web Store requirement). Need one of them? Say which, and let the human decide.
+- **A form is one call**: `qa_fill_json { fields: { "Label": "value" }, advance: "Next" }` — custom
+  dropdowns, calendars, cascaders, trees, tags and time included.
+- **A control refuses → the ladder**, in order: `qa_probe { name }` (what is this widget and which
+  verb drives it) → `raw: true` → `qa_pick_date`/`_time`/`_range`/`_path`/`_tags` → a CSS selector
+  (every verb takes one) → `qa_click { name }` and read the `widget` verdict → `qa_focus_tab` if the
+  tab is in the background.
+- **Reading is free and needs no consent**: `qa_snapshot` (+`geometry:true` for boxes in CSS pixels)
+  · `qa_read` · `qa_styles` (computed styles + the design token) · `qa_storage` · `qa_findings`
+  (failed requests arrive with the server's error body) · `qa_axe` · `qa_focus_walk`.
+- **Acting** (`qa_click`, `qa_type*`, `qa_fill_json`, `qa_upload`, `qa_navigate`, `qa_reload`, `qa_open_isolated`,
+  `qa_mock`) needs Pro **and** the one-time "Agent control" consent in the popup. A refusal there
+  is the human's to clear: name the switch and stop, never work around it.
+- **A control "disappeared" → look for `modal` in the reply BEFORE filing anything.** While a modal
+  dialog or popover is open, the library marks the rest of the page aria-hidden, so the snapshot
+  legitimately contains only that layer and `qa_click` legitimately cannot find anything outside
+  it. The app is fine. Finish inside the layer, or close it (its own Close/Cancel/OK, or
+  `qa_press Escape`) and snapshot again. A regression run once filed fifteen bugs against a
+  healthy app for this one reason — none of them survived a re-test.
+- **A native browser dialog is NOT clickable by anything** — "Leave site?", confirm(), alert(),
+  prompt() are browser chrome, outside the document. Do not hunt for their buttons in the tree
+  and do not report them as unreachable controls. `qa_dialogs` decides what they do instead.
+- **The server will not produce the failure you need → `qa_mock`**: answer a request from a rule
+  (a 500, an empty list, a 30s delay, a dropped connection) instead of waiting for the backend to
+  misbehave. It covers the page's own fetch/XHR in the top frame — not documents, subresources,
+  WebSocket or iframes. Clear the rules when the check is done; a forgotten mock outlives the
+  reason for it and the next thing you measure is a lie.
+<!-- qiksy-bridge:end -->

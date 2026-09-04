@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "ainative-memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "ainative-memory-mcp"
+      ],
+      "env": {
+        "ZERODB_API_KEY": "tmp_JonULWET_jivoTfqFW26SnyyeLYJOXvnYQ0cStWbq48",
+        "ZERODB_PROJECT_ID": "05765bf8-d6b8-4254-8239-d4a652127ced",
+        "ZERODB_API_URL": "https://api.ainative.studio"
+      }
+    }
+  }
+}
