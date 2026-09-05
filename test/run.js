@@ -323,6 +323,21 @@ function s(id,result){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id,resu
 }
 
 process.stdout.write('security controls\n');
+process.stdout.write('probe env recording\n');
+{
+  const probeMod = require(path.join(ROOT, 'crawler/probe'));
+  t('probe_env records supplied keys, never values', () => {
+    const src = fs.readFileSync(path.join(ROOT, 'crawler/probe.js'), 'utf8');
+    assert.ok(/supplied: r\.suppliedEnvKeys/.test(src), 'probe() must report supplied env keys');
+    assert.ok(!/suppliedEnvValues|env\[k\]\s*\)/.test(src), 'env values must never be recorded');
+    assert.ok(typeof probeMod.probeStdio === 'function');
+  });
+  t('crawl records probe_env on every log entry', () => {
+    const src = fs.readFileSync(path.join(ROOT, 'crawler/crawl.js'), 'utf8');
+    assert.ok(/probe_env: r\.probe_env/.test(src), 'log entries must carry probe_env');
+  });
+}
+
 process.stdout.write('probe env classification\n');
 {
   const { CREDENTIAL_ENV } = require(path.join(ROOT, 'crawler/probe'));

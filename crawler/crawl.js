@@ -112,6 +112,9 @@ function saveState(s) {
       log.append({
         server_id: s.id, server_name: s.name, source: s.source,
         set_hash: r.setHash,
+        // A listing is an observation under conditions. Record them, or the
+        // count describes the probe rather than the server.
+        probe_env: r.probe_env,
         tools: r.tools.map((t) => ({ name: t.name, hash: t.hash, canonical_json: t.canonical })),
       });
       if (isNew) newly++; else changed++;

@@ -48,6 +48,15 @@ function initMsg(id) {
 // ---------------------------------------------------------------- stdio
 
 function probeStdio(install, { timeoutMs = 45000, env = {} } = {}) {
+  // The environment a listing was taken under is part of the observation:
+  // a server may register different tools under different variables. The
+  // child gets a fixed minimal set plus whatever the caller supplied, so the
+  // exact keys are knowable. Values are never recorded.
+  const childEnv = Object.assign(
+    { PATH: process.env.PATH, HOME: process.env.HOME, NODE_ENV: 'production', CI: '1', NO_UPDATE_NOTIFIER: '1' },
+    env
+  );
+  const suppliedEnvKeys = Object.keys(env).sort();
   return new Promise((resolve) => {
     let child;
     try {
@@ -55,7 +64,7 @@ function probeStdio(install, { timeoutMs = 45000, env = {} } = {}) {
         stdio: ['pipe', 'pipe', 'pipe'],
         // Deliberately minimal. The child is untrusted code; it gets no tokens,
         // no cloud credentials, and no access to the operator's environment.
-        env: Object.assign({ PATH: process.env.PATH, HOME: process.env.HOME, NODE_ENV: 'production', CI: '1', NO_UPDATE_NOTIFIER: '1' }, env),
+        env: childEnv,
       });
     } catch (e) {
       return resolve({ ok: false, error: 'spawn: ' + e.message });
@@ -102,7 +111,7 @@ function probeStdio(install, { timeoutMs = 45000, env = {} } = {}) {
         child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
         collectAllTools(sendRequest).then((tools) => {
           clearTimeout(timer);
-          finish({ ok: true, tools });
+          finish({ ok: true, tools, suppliedEnvKeys });
         }).catch((e) => {
           clearTimeout(timer);
           finish({ ok: false, error: 'tools/list: ' + e.message });
@@ -246,7 +255,7 @@ async function probe(server, opts = {}) {
       const env = {};
       for (const n of r.missingEnv) env[n] = 'mcp-pin-probe-placeholder';
       const r2 = await probeStdio(install, Object.assign({}, opts, { env }));
-      if (r2.ok) { r = r2; r.usedPlaceholderEnv = r.missingEnv; }
+      if (r2.ok) { r = r2; r.usedPlaceholderEnv = r.missingEnv.slice(); }
       else r.error = 'needs credentials (' + r.missingEnv.join(', ') + ')';
     }
   } else return { ok: false, error: 'unknown install type' };
@@ -255,7 +264,17 @@ async function probe(server, opts = {}) {
   const v = validateToolset(r.tools);
   if (!v.ok) return { ok: false, error: 'rejected: ' + v.error };
   const fp = fingerprintToolset(r.tools);
-  return { ok: true, setHash: fp.setHash, tools: fp.tools, count: fp.tools.length };
+  return {
+    ok: true, setHash: fp.setHash, tools: fp.tools, count: fp.tools.length,
+    // The environment a listing was taken under is part of the observation.
+    // Without it, a tool count describes this probe, not the server.
+    probe_env: {
+      // Keys only, never values. The child receives a fixed minimal set
+      // (PATH, HOME, NODE_ENV, CI, NO_UPDATE_NOTIFIER) plus these.
+      supplied: r.suppliedEnvKeys || [],
+      placeholders: r.usedPlaceholderEnv || [],
+    },
+  };
 }
 
 module.exports = { probe, probeStdio, probeHttp, installNpm, CREDENTIAL_ENV, detectMissingEnv };
