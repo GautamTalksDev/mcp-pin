@@ -241,7 +241,7 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
   fs.copyFileSync(path.join(__dirname, 'logo.svg'), path.join(OUT, 'logo.svg'));
   const og = path.join(__dirname, 'og.png');
   if (fs.existsSync(og)) fs.copyFileSync(og, path.join(OUT, 'og.png'));
-  for (const f of ['log.ndjson', 'head.json', 'pagination-recrawl.json', 'incomplete-crawl-2026-09-04.json']) {
+  for (const f of ['log.ndjson', 'head.json', 'pagination-recrawl.json', 'incomplete-crawl-2026-09-04.json', 'env-conditioned-listings-2026-09-04.json']) {
     const p = path.join(DATA, f);
     if (fs.existsSync(p)) fs.copyFileSync(p, path.join(OUT, f));
   }
@@ -458,6 +458,24 @@ because those steps used <code>if: always()</code> in a single job that also exe
 packages. Eighteen entries were appended. <code>last-crawl.json</code> was not updated. The chain
 verifies; the coverage does not. The log was not rewritten. Machine-readable note:
 <a href="/incomplete-crawl-2026-09-04.json">incomplete-crawl-2026-09-04.json</a>.</p>
+
+<h2 style="margin-top:52px">Tool listings recorded without their environment</h2>
+<p class="body">Some MCP servers choose which tools to register based on environment variables.
+<code>@novalux12/spotify-mcp</code> reads <code>SPOTIFY_MCP_TOOLSETS</code>: unset or <code>all</code> registers 551 tools,
+<code>playback,library</code> registers 207, and an unrecognised value registers 4. The crawler did not
+record the environment a probe ran with, so a tool count in this log cannot be read as the
+server&rsquo;s full surface &mdash; only as what the server exposed to one probe.</p>
+<p class="body">A second defect compounds it. When a server reports that it needs environment
+variables, the probe retried with the literal string <code>mcp-pin-probe-placeholder</code> for each one.
+The detector did not distinguish credentials from feature flags, so a placeholder could be
+written into a variable that selects which tools register.</p>
+<p class="body"><strong>One case is unresolved.</strong> Entry 60 (3 September 2026) records 50 tools for
+<code>@novalux12/spotify-mcp</code>. No published version of that package exposes 50 tools under any
+toolset value reproduced on 4 September &mdash; published versions expose 96, 99, 100, 101, 154,
+313, 550 or 551, and the placeholder value exposes 4. All 50 logged names are a subset of the
+551. The mechanism that produced 50 is unknown, and it is recorded here as unknown rather
+than explained away. Machine-readable note:
+<a href="/env-conditioned-listings-2026-09-04.json">env-conditioned-listings-2026-09-04.json</a>.</p>
 
 <h2 style="margin-top:52px">What this does not protect against</h2>
 <p class="body">mcp-pin detects when a server's tool definitions change between sessions,

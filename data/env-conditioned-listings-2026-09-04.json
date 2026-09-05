@@ -1,0 +1,9 @@
+{
+  "recorded_at": "2026-09-04T00:00:00Z",
+  "issue": "Tool listings were recorded without recording the environment that produced them.",
+  "detail": "Some MCP servers gate which tools they register on environment variables. @novalux12/spotify-mcp reads SPOTIFY_MCP_TOOLSETS: unset or 'all' registers 551 tools; 'playback,library' registers 207; an unrecognised value registers 4. The crawler did not record the environment a probe ran with, so a logged tool count cannot be read as the server's full surface.",
+  "second_defect": "probe() retries with the literal string 'mcp-pin-probe-placeholder' for every variable its missing-env detector names. The detector does not distinguish credentials from feature flags, so a placeholder can be written into a variable that selects which tools register, producing a listing that reflects the probe rather than the server.",
+  "unresolved": "Log entry seq 60 (3 Sep 2026) records 50 tools for @novalux12/spotify-mcp. No published version of that package exposes 50 tools under any SPOTIFY_MCP_TOOLSETS value reproduced on 4 Sep: published versions expose 96, 99, 100, 101, 154, 313, 550 or 551, the placeholder value exposes 4, and all 50 logged names are a subset of the 551. The mechanism that produced 50 is unknown.",
+  "scope": "Any server whose registration depends on environment. The 18 servers listed in pagination-recrawl.json as count-increased are unexplained pending a controlled re-crawl; they are not established as pagination recovery or as package drift.",
+  "status": "Scheduled crawling is disabled. Counts and badges for env-dependent servers should not be read as complete until re-crawled with the environment recorded alongside each entry."
+}
