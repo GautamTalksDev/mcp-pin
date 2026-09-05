@@ -9,7 +9,7 @@
   "same_count": 224,
   "hash_changed": 43,
   "currently_returning_nextCursor": 0,
-  "interpretation": "The pre-0.1.1 crawler ignored nextCursor. A count increase after the fix was the planned signal for incomplete history. 18 servers had a higher count. None of those 18 currently return nextCursor; page 1 already contained the full new set. The 18 jumps are package drift (or probe-environment difference) since the last signed crawl, not recovered pages. Historical responses did not store nextCursor, so a server that paginated then and does not now cannot be proven either way. Failed re-probes: 5.",
+  "interpretation": "The 18 count increases are unexplained, pending a controlled re-crawl. Tool listings depend on environment the crawler did not record, so mcp-pin cannot currently distinguish 'this server exposes N tools' from 'this server exposed N tools to our probe.' They are not established as pagination recovery or as package drift. Historical responses did not store nextCursor or probe env. Failed re-probes: 5.",
   "increased": [
     {"id": "44feb24b614f5b6e", "name": "@novalux12/spotify-mcp", "old": 50, "new": 551, "page1": 551, "nextCursor": null},
     {"id": "503f5f475888a6f3", "name": "@mcp-abap-adt/core", "old": 152, "new": 193, "page1": 193, "nextCursor": null},
