@@ -159,19 +159,13 @@ function lastLogHash() {
 function withLogLock(fn) {
   ensure();
   const start = Date.now();
+  const CONTENDED = new Set(['EEXIST', 'EPERM', 'EACCES', 'EBUSY']);
   for (;;) {
+    let fd;
     try {
-      const fd = fs.openSync(LOCK, 'wx');
-      try {
-        try { fs.writeFileSync(fd, String(process.pid)); } catch {}
-        chmodQuiet(LOCK, 0o600);
-        return fn();
-      } finally {
-        try { fs.closeSync(fd); } catch {}
-        try { fs.unlinkSync(LOCK); } catch {}
-      }
+      fd = fs.openSync(LOCK, 'wx');
     } catch (e) {
-      if (e.code !== 'EEXIST') throw e;
+      if (!CONTENDED.has(e.code)) throw e;
       if (Date.now() - start > LOCK_TIMEOUT_MS) {
         throw new Error('timed out waiting for log lock at ' + LOCK);
       }
@@ -186,6 +180,16 @@ function withLogLock(fn) {
         if (e2.code === 'ENOENT') continue;
       }
       sleepSync(15 + Math.floor(Math.random() * 40));
+      continue;
+    }
+    // lock held — work runs outside the contention handler
+    try {
+      try { fs.writeFileSync(fd, String(process.pid)); } catch {}
+      chmodQuiet(LOCK, 0o600);
+      return fn();
+    } finally {
+      try { fs.closeSync(fd); } catch {}
+      try { fs.unlinkSync(LOCK); } catch {}
     }
   }
 }
