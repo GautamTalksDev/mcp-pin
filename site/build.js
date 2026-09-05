@@ -442,9 +442,11 @@ badge against an incomplete toolset. On 4 September 2026 every server already in
 was re-probed with a crawler that follows pagination.</p>
 <p class="body"><strong>18 of 248 recorded servers had a higher tool count. 0 of those 18 currently
 return <code>nextCursor</code></strong> — the extra tools were already on page 1. The count changes are
-package drift since the last signed crawl, not recovered pages. Five servers failed the
-re-probe and are unknown. Historical responses did not store <code>nextCursor</code>, so a server
-that paginated then and does not now cannot be proven either way. The machine-readable
+unexplained, pending a controlled re-crawl. Tool listings depend on environment the
+crawler did not record, so these numbers are not established as pagination recovery or as
+package drift. Five servers failed the
+re-probe and are unknown. Historical responses did not store <code>nextCursor</code> or probe env.
+The machine-readable
 record is <a href="/pagination-recrawl.json">pagination-recrawl.json</a>.</p>
 <p class="body">A signed log that quietly corrected itself would be worse than one that did not
 need correcting. Publishing this is the correction.</p>
