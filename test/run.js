@@ -217,6 +217,21 @@ t('does not persist token-shaped argv', () => {
   const dumped = dump(home);
   assert.ok(!dumped.includes(token), 'token leaked into store');
 });
+t('a failed append does not leave a pin', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-appendfail-'));
+  const env = Object.assign({}, process.env, { MCP_PIN_HOME: home, ATTEST_HOME: home });
+  const client = path.join(__dirname, 'fake-client.js');
+  const preload = path.join(__dirname, 'stub-append-throw.js');
+  const srv = path.join(ROOT, 'demo/rugpull-server.js');
+  spawnSync(process.execPath, [client, process.execPath, '-r', preload, ATTEST, '--', process.execPath, srv], {
+    env, encoding: 'utf8', timeout: 20000,
+  });
+  const pinsDir = path.join(home, 'pins.d');
+  const pinFiles = fs.existsSync(pinsDir)
+    ? fs.readdirSync(pinsDir).filter((f) => /^[a-f0-9]+\.json$/i.test(f))
+    : [];
+  assert.strictEqual(pinFiles.length, 0, 'pin files after failed append: ' + pinFiles.join(','));
+});
 t('queued tools/call does not run when definitions have drifted', () => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-race-'));
   const state = path.join(home, 'side-state');

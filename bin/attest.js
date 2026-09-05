@@ -196,7 +196,6 @@ function runProxy() {
     const pin = store.getPin(id);
 
     if (!pin) {
-      store.setPin(id, pinRecord(id, label, fp));
       store.append({
         type: 'pin',
         server_id: id,
@@ -204,6 +203,7 @@ function runProxy() {
         set_hash: fp.setHash,
         tools: fp.tools.map((t) => ({ name: t.name, hash: t.hash, canonical_json: t.canonical })),
       });
+      store.setPin(id, pinRecord(id, label, fp));
       process.stderr.write(C.dim(`mcp-pin: pinned ${fp.tools.length} tool(s) for ${label} (${fp.setHash.slice(0, 12)})\n`));
       return { blocked: false };
     }
@@ -348,8 +348,8 @@ function cmdApprove(k) {
   const p = k && store.getPin(k);
   if (!p) { process.stderr.write('unknown server id\n'); process.exit(1); }
   if (!p.pending) { process.stdout.write('nothing pending\n'); return; }
-  store.setPin(k, pinRecord(p.id || k, p.label, { setHash: p.pending.setHash, tools: p.pending.tools }));
   store.append({ type: 'approve', server_id: k, label: p.label, set_hash: p.pending.setHash });
+  store.setPin(k, pinRecord(p.id || k, p.label, { setHash: p.pending.setHash, tools: p.pending.tools }));
   process.stdout.write(`re-pinned ${p.label} at ${p.pending.setHash.slice(0, 12)}\n`);
 }
 
