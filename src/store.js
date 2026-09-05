@@ -226,6 +226,10 @@ function readLog() {
 }
 
 function verifyLog() {
+  // An absent log and a verified empty log are different facts. Reporting both
+  // as "log ok, 0 entries" is what <=0.1.0 did when the file was corrupt, so
+  // the two are kept distinguishable in the output.
+  const exists = fs.existsSync(LOG);
   const entries = readLog();
   let prev = 'GENESIS';
   for (let i = 0; i < entries.length; i++) {
@@ -236,7 +240,7 @@ function verifyLog() {
     if (sha256(JSON.stringify(copy)) !== e.entry_hash) return { ok: false, index: i, reason: 'bad entry hash' };
     prev = e.entry_hash;
   }
-  return { ok: true, count: entries.length };
+  return { ok: true, count: entries.length, exists };
 }
 
 module.exports = {

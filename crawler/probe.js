@@ -255,7 +255,8 @@ async function probe(server, opts = {}) {
       const env = {};
       for (const n of r.missingEnv) env[n] = 'mcp-pin-probe-placeholder';
       const r2 = await probeStdio(install, Object.assign({}, opts, { env }));
-      if (r2.ok) { r = r2; r.usedPlaceholderEnv = r.missingEnv.slice(); }
+      const attempted = r.missingEnv.slice();
+      if (r2.ok) { r = r2; r.usedPlaceholderEnv = attempted; }
       else r.error = 'needs credentials (' + r.missingEnv.join(', ') + ')';
     }
   } else return { ok: false, error: 'unknown install type' };

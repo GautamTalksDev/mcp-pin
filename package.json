@@ -1,6 +1,6 @@
 {
   "name": "mcp-pin",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Tool-integrity pinning for MCP. Pin what your agent approved; block it when it changes.",
   "bin": {
     "mcp-pin": "bin/attest.js"
@@ -9,6 +9,7 @@
     "bin",
     "src",
     "crawler",
+    "!crawler/outreach.js",
     "site",
     "PUBLIC_KEY.txt",
     "README.md",

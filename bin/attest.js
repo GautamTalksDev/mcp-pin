@@ -380,6 +380,7 @@ function cmdVerifyLog(dir) {
 
 function cmdVerify() {
   const r = store.verifyLog();
-  if (r.ok) process.stdout.write(`log ok, ${r.count} entries, chain intact\n`);
+  if (r.ok && !r.exists) process.stdout.write('no local log yet\n');
+  else if (r.ok) process.stdout.write(`log ok, ${r.count} entries, chain intact\n`);
   else { process.stderr.write(`log BROKEN at entry ${r.index}: ${r.reason}\n`); process.exit(1); }
 }
