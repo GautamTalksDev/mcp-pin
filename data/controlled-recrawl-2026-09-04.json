@@ -1,0 +1,239 @@
+{
+ "probed_at": "2026-09-05T02:35:49Z",
+ "method": "Controlled re-probe of the 18 count-increased servers with the 0.1.2 crawler (follows nextCursor) and no placeholder substitution into non-credential env. Read-only: nothing was appended to the signed log.",
+ "result": "18 of 18 reproduce the 4 September count exactly. The counts are stable across two independent probes, so they are not probe noise.",
+ "conclusion": "For 17 servers the increase is ordinary package drift between the 3 September crawl and now: the jumps are small (+1 to +41) and consistent with normal releases. @mozilla/firefox-devtools-mcp and @mozilla/firefox-devtools-mcp-moz both moved 32 to 34 identically, which is what a release looks like.",
+ "unresolved": "@novalux12/spotify-mcp remains unexplained. It exposes 551 tools on both re-probes. The log records 50 on 3 September. No published version and no SPOTIFY_MCP_TOOLSETS value reproduces 50: published versions expose 96, 99, 100, 101, 154, 313, 550 or 551, an unrecognised toolset value exposes 4, and all 50 logged names are a subset of the 551. The mechanism that produced 50 is unknown and is recorded as unknown.",
+ "servers": [
+  {
+   "id": "44feb24b614f5b6e",
+   "name": "@novalux12/spotify-mcp",
+   "logged": 50,
+   "earlier_reprobe": 551,
+   "now": 551,
+   "ok": true,
+   "error": null,
+   "probe_env": {
+    "supplied": [],
+    "placeholders": []
+   }
+  },
+  {
+   "id": "503f5f475888a6f3",
+   "name": "@mcp-abap-adt/core",
+   "logged": 152,
+   "earlier_reprobe": 193,
+   "now": 193,
+   "ok": true,
+   "error": null,
+   "probe_env": {
+    "supplied": [],
+    "placeholders": []
+   }
+  },
+  {
+   "id": "2e91562e4ece2db2",
+   "name": "@doitintl/doit-mcp-server",
+   "logged": 169,
+   "earlier_reprobe": 188,
+   "now": 188,
+   "ok": true,
+   "error": null,
+   "probe_env": {
+    "supplied": [],
+    "placeholders": []
+   }
+  },
+  {
+   "id": "2494b79e9661b22d",
+   "name": "mcp-crypto-price",
+   "logged": 4,
+   "earlier_reprobe": 13,
+   "now": 13,
+   "ok": true,
+   "error": null,
+   "probe_env": null,
+   "note": "first attempt timed out on a cold npx cache; confirmed on a warm re-run"
+  },
+  {
+   "id": "c4fae9e413747b6a",
+   "name": "hostinger-api-mcp",
+   "logged": 375,
+   "earlier_reprobe": 382,
+   "now": 382,
+   "ok": true,
+   "error": null,
+   "probe_env": {
+    "supplied": [],
+    "placeholders": []
+   }
+  },
+  {
+   "id": "2e73657533f14bd3",
+   "name": "@professional-wiki/mediawiki-mcp-server",
+   "logged": 22,
+   "earlier_reprobe": 29,
+   "now": 29,
+   "ok": true,
+   "error": null,
+   "probe_env": {
+    "supplied": [],
+    "placeholders": []
+   }
+  },
+  {
+   "id": "9bebbec14fb8af60",
+   "name": "@ironbee-ai/devtools",
+   "logged": 51,
+   "earlier_reprobe": 57,
+   "now": 57,
+   "ok": true,
+   "error": null,
+   "probe_env": {
+    "supplied": [],
+    "placeholders": []
+   }
+  },
+  {
+   "id": "a8e335ce6a9c906e",
+   "name": "@cyanheads/pubmed-mcp-server",
+   "logged": 5,
+   "earlier_reprobe": 9,
+   "now": 9,
+   "ok": true,
+   "error": null,
+   "probe_env": {
+    "supplied": [],
+    "placeholders": []
+   }
+  },
+  {
+   "id": "97f12f9fbaac803a",
+   "name": "premiere-pro-mcp",
+   "logged": 326,
+   "earlier_reprobe": 330,
+   "now": 330,
+   "ok": true,
+   "error": null,
+   "probe_env": {
+    "supplied": [],
+    "placeholders": []
+   }
+  },
+  {
+   "id": "9556c8fdc6dd81e2",
+   "name": "mcp-local-rag",
+   "logged": 6,
+   "earlier_reprobe": 9,
+   "now": 9,
+   "ok": true,
+   "error": null,
+   "probe_env": {
+    "supplied": [],
+    "placeholders": []
+   }
+  },
+  {
+   "id": "5e6801c60883fff2",
+   "name": "@lotargo/memory_plugin",
+   "logged": 13,
+   "earlier_reprobe": 16,
+   "now": 16,
+   "ok": true,
+   "error": null,
+   "probe_env": {
+    "supplied": [],
+    "placeholders": []
+   }
+  },
+  {
+   "id": "bee37f2e40e782c3",
+   "name": "@yoonion/mimi-seed-mcp",
+   "logged": 231,
+   "earlier_reprobe": 234,
+   "now": 234,
+   "ok": true,
+   "error": null,
+   "probe_env": {
+    "supplied": [],
+    "placeholders": []
+   }
+  },
+  {
+   "id": "fbdcc06676fab4a4",
+   "name": "package-registry-mcp",
+   "logged": 13,
+   "earlier_reprobe": 16,
+   "now": 16,
+   "ok": true,
+   "error": null,
+   "probe_env": {
+    "supplied": [],
+    "placeholders": []
+   }
+  },
+  {
+   "id": "1352cbe30246f38d",
+   "name": "@mozilla/firefox-devtools-mcp-moz",
+   "logged": 32,
+   "earlier_reprobe": 34,
+   "now": 34,
+   "ok": true,
+   "error": null,
+   "probe_env": {
+    "supplied": [],
+    "placeholders": []
+   }
+  },
+  {
+   "id": "75633492483fa7bc",
+   "name": "@mozilla/firefox-devtools-mcp",
+   "logged": 32,
+   "earlier_reprobe": 34,
+   "now": 34,
+   "ok": true,
+   "error": null,
+   "probe_env": {
+    "supplied": [],
+    "placeholders": []
+   }
+  },
+  {
+   "id": "3c5902b4c30154b1",
+   "name": "opensearch-mcp",
+   "logged": 2,
+   "earlier_reprobe": 3,
+   "now": 3,
+   "ok": true,
+   "error": null,
+   "probe_env": {
+    "supplied": [],
+    "placeholders": []
+   }
+  },
+  {
+   "id": "1f20f015f37a779f",
+   "name": "tracetify-mcp",
+   "logged": 15,
+   "earlier_reprobe": 16,
+   "now": 16,
+   "ok": true,
+   "error": null,
+   "probe_env": {
+    "supplied": [],
+    "placeholders": []
+   }
+  },
+  {
+   "id": "2d91a86203374ba3",
+   "name": "@apify/actors-mcp-server",
+   "logged": 9,
+   "earlier_reprobe": 10,
+   "now": 10,
+   "ok": true,
+   "error": null,
+   "probe_env": null,
+   "note": "first attempt timed out on a cold npx cache; confirmed on a warm re-run"
+  }
+ ]
+}

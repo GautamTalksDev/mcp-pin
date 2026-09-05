@@ -241,7 +241,7 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
   fs.copyFileSync(path.join(__dirname, 'logo.svg'), path.join(OUT, 'logo.svg'));
   const og = path.join(__dirname, 'og.png');
   if (fs.existsSync(og)) fs.copyFileSync(og, path.join(OUT, 'og.png'));
-  for (const f of ['log.ndjson', 'head.json', 'pagination-recrawl.json', 'incomplete-crawl-2026-09-04.json', 'env-conditioned-listings-2026-09-04.json']) {
+  for (const f of ['log.ndjson', 'head.json', 'pagination-recrawl.json', 'incomplete-crawl-2026-09-04.json', 'env-conditioned-listings-2026-09-04.json', 'controlled-recrawl-2026-09-04.json']) {
     const p = path.join(DATA, f);
     if (fs.existsSync(p)) fs.copyFileSync(p, path.join(OUT, f));
   }
@@ -442,12 +442,13 @@ badge against an incomplete toolset. On 4 September 2026 every server already in
 was re-probed with a crawler that follows pagination.</p>
 <p class="body"><strong>18 of 248 recorded servers had a higher tool count. 0 of those 18 currently
 return <code>nextCursor</code></strong> — the extra tools were already on page 1. The count changes are
-unexplained, pending a controlled re-crawl. Tool listings depend on environment the
-crawler did not record, so these numbers are not established as pagination recovery or as
-package drift. Five servers failed the
+not pagination recovery: none of the 18 returns <code>nextCursor</code>. A controlled re-probe on
+4 September reproduced all 18 counts exactly, so they are stable rather than probe noise.
+For 17 of them the increase is ordinary package drift between crawls. One,
+<code>@novalux12/spotify-mcp</code>, is still unexplained &mdash; see below. Five servers failed the
 re-probe and are unknown. Historical responses did not store <code>nextCursor</code> or probe env.
 The machine-readable
-record is <a href="/pagination-recrawl.json">pagination-recrawl.json</a>.</p>
+record is <a href="/pagination-recrawl.json">pagination-recrawl.json</a>) and <a href="/controlled-recrawl-2026-09-04.json">controlled-recrawl-2026-09-04.json</a>.</p>
 <p class="body">A signed log that quietly corrected itself would be worse than one that did not
 need correcting. Publishing this is the correction.</p>
 
