@@ -1,7 +1,6 @@
 name: crawl
 on:
-  # Stay off the schedule until crawl/sign isolation has actually run in CI.
-  # schedule: [{ cron: '0 6 * * *' }]
+  schedule: [{ cron: '0 6 * * *' }]
   workflow_dispatch:
 permissions: { contents: read }
 concurrency:
