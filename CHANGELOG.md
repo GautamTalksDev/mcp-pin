@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.2
+
+0.1.1 was tagged and then withdrawn; it never landed on npm. Two store bugs survived the concurrent-pin rewrite.
+
+- Log lock: `openSync(..., 'wx')` contention is `EPERM` / `EACCES` / `EBUSY` on Windows, not only `EEXIST`. Work also ran inside the contention `catch`, so an append failure could be retried or reported as a lock error.
+- First pin and approve wrote the pin file before the log entry. A failed append left a trusted pin with no public record (16 pin files, 15 log lines on windows/node20). The log entry is now the commitment; the pin is written after it succeeds.
+
 ## 0.1.1
 
 Three P0 defects in 0.1.0 were confirmed against the published package. They are the reason this release exists.

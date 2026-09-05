@@ -100,7 +100,7 @@ It lives in the README so it cannot be quietly renegotiated later.
 Pick the server with the most access. Filesystem, GitHub, SSH, Kubernetes, a database, anything cloud. Put `mcp-pin` in front of it.
 
 ```bash
-npx --yes mcp-pin@0.1.1 -- <your mcp server command>
+npx --yes mcp-pin@0.1.2 -- <your mcp server command>
 ```
 
 Add it in front of a server in your client config:
@@ -119,7 +119,7 @@ Add it in front of a server in your client config:
 First run pins. Every run after that verifies.
 
 ```
-$ npx --yes mcp-pin@0.1.1 -- node weather-server.js
+$ npx --yes mcp-pin@0.1.2 -- node weather-server.js
 mcp-pin: pinned 1 tool(s) for node [1 arg] (40c179188ad9)
 ```
 
@@ -183,7 +183,7 @@ The rule is simple. **If the model can read it, it is in scope.** Key order does
 
 ## Catch it in your own CI
 
-> **Experimental.** The GitHub Action is not part of the 0.1.1 release. Its bootstrap instructions currently reference a package that is not on npm, and the baseline does not survive the runner. Use the local proxy. Do not adopt the action in CI yet.
+> **Experimental.** The GitHub Action is not part of the 0.1.2 release. Its bootstrap instructions currently reference a package that is not on npm, and the baseline does not survive the runner. Use the local proxy. Do not adopt the action in CI yet.
 
 If you maintain an MCP server, the useful place to notice a definition change is the pull request that makes it.
 
@@ -245,7 +245,7 @@ The point of a transparency log is that you do not have to trust the people runn
 curl -O https://mcp-pin.gautamkhosla.com/log.ndjson
 curl -O https://mcp-pin.gautamkhosla.com/head.json
 curl -O https://mcp-pin.gautamkhosla.com/PUBLIC_KEY.txt
-npx --yes mcp-pin@0.1.1 verify-log .
+npx --yes mcp-pin@0.1.2 verify-log .
 ```
 
 ```
@@ -272,7 +272,7 @@ mcp-pin detects when a server's tool definitions change between sessions, includ
 
 It does **not** protect you from a malicious program running as the same user. That program can delete `~/.mcp-pin` and re-pin itself. That is an architectural limit of a local pin store, not a bug, and it will not be "fixed" by writing the same files harder. Day-one malice that never changes is also invisible. A pin is not a safety rating.
 
-Versions ≤0.1.0 silently truncated paginated servers and silently lost concurrent pin writes while reporting success. Use 0.1.1.
+Versions ≤0.1.0 silently truncated paginated servers and silently lost concurrent pin writes while reporting success. Use 0.1.2.
 
 ## Honest limitations
 

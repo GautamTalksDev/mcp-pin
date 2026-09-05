@@ -8,7 +8,7 @@ A transparency log is only worth something if you can check it yourself. This pa
 curl -O https://mcp-pin.gautamkhosla.com/log.ndjson
 curl -O https://mcp-pin.gautamkhosla.com/head.json
 curl -O https://mcp-pin.gautamkhosla.com/PUBLIC_KEY.txt
-npx --yes mcp-pin@0.1.1 verify-log .
+npx --yes mcp-pin@0.1.2 verify-log .
 ```
 
 ```

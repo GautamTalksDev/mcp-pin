@@ -167,7 +167,7 @@ function page(title, body, opts = {}) {
 </nav></div>
 ${body}
 <div class="wrap"><footer>
-<p>mcp-pin keeps a public, append-only record of MCP tool definitions. Every entry is hash linked and every head is signed, so you can <a href="/log.ndjson">download the log</a> and check it yourself with <code><!--email_off-->npx --yes mcp-pin@0.1.1 verify-log<!--/email_off--></code>. You do not have to trust whoever runs this. The verifier pins <a href="/PUBLIC_KEY.txt">PUBLIC_KEY.txt</a>; it will not accept a head signed by whatever key arrives with the file.</p>
+<p>mcp-pin keeps a public, append-only record of MCP tool definitions. Every entry is hash linked and every head is signed, so you can <a href="/log.ndjson">download the log</a> and check it yourself with <code><!--email_off-->npx --yes mcp-pin@0.1.2 verify-log<!--/email_off--></code>. You do not have to trust whoever runs this. The verifier pins <a href="/PUBLIC_KEY.txt">PUBLIC_KEY.txt</a>; it will not accept a head signed by whatever key arrives with the file.</p>
 <p>Crawling follows <code>tools/list</code> pagination, capped at 50 pages, once per server per day. No tool is ever called. To opt out, add your server to <a href="${REPO}/blob/main/OPTOUT.txt">OPTOUT.txt</a> or open an issue. Honoured on the next crawl, no justification needed.</p>
 <p>Run by Gautam Khosla as an independent open-source project. Not affiliated with
 Anthropic, the Model Context Protocol project, or any server listed here.
@@ -275,7 +275,7 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
   including changes the server did not announce. Client traffic is held until that check
   completes. Separately, it keeps this public record of what those definitions were, and when they moved.</p>
   <div class="copy">
-    <code id="cmd"><!--email_off-->npx --yes mcp-pin@0.1.1 -- &lt;your mcp server&gt;<!--/email_off--></code>
+    <code id="cmd"><!--email_off-->npx --yes mcp-pin@0.1.2 -- &lt;your mcp server&gt;<!--/email_off--></code>
     <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('cmd').innerText);this.textContent='copied'">copy</button>
   </div>
   <p style="margin-top:20px">
@@ -391,7 +391,7 @@ ${changes
 <h2 style="margin-top:56px">Watch this server yourself</h2>
 <p class="body">If you run this server, put the proxy in front of it. It pins these exact
 fingerprints on first connect and stops the session if they move.</p>
-<div class="copy"><code><!--email_off-->npx --yes mcp-pin@0.1.1 -- &lt;your ${esc(s.name)} command&gt;<!--/email_off--></code></div>
+<div class="copy"><code><!--email_off-->npx --yes mcp-pin@0.1.2 -- &lt;your ${esc(s.name)} command&gt;<!--/email_off--></code></div>
 <p class="body" style="margin-top:18px">Or subscribe to this page's <a href="/feed/${s.id}.xml">RSS feed</a>
 to be told when it changes.</p>
 

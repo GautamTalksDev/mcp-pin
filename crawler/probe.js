@@ -30,7 +30,7 @@ function detectMissingEnv(stderr) {
   for (const re of pats) { let m; while ((m = re.exec(stderr || ''))) names.add(m[1]); }
   return [...names].filter((n) => !['NODE_ENV', 'PATH', 'HOME', 'CI'].includes(n)).slice(0, 8);
 }
-const CLIENT_INFO = { name: 'mcp-pin-crawler', version: '0.1.1' };
+const CLIENT_INFO = { name: 'mcp-pin-crawler', version: '0.1.2' };
 
 function initMsg(id) {
   return {
