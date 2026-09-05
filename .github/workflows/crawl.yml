@@ -1,6 +1,7 @@
 name: crawl
 on:
-  schedule: [{ cron: '0 6 * * *' }]
+  # Off until probe env is recorded and placeholders are not fed into feature flags.
+  # schedule: [{ cron: '0 6 * * *' }]
   workflow_dispatch:
 permissions: { contents: read }
 concurrency:
