@@ -17,5 +17,6 @@ jobs:
         with:
           node-version: '20'
       - run: node test/run.js
+      - run: npm install -g npm@11
       - run: npm --version
       - run: npm publish --provenance --access public
