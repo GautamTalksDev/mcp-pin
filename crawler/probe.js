@@ -20,6 +20,10 @@ const PROTOCOL = '2025-06-18';
 // Many servers exit immediately because a required credential env var is
 // unset. They almost always name it. Detect it so we can retry with a
 // placeholder, enough to reach tools/list, never enough to authenticate.
+// A placeholder is only safe for something that is plainly a secret. Anything
+// else may change which tools the server registers.
+const CREDENTIAL_ENV = /(TOKEN|SECRET|KEY|PASSWORD|PASSWD|CREDENTIAL|CLIENT_ID|API_?KEY|AUTH|BEARER|DSN|CONNECTION_STRING)$/;
+
 function detectMissingEnv(stderr) {
   const names = new Set();
   const pats = [
@@ -229,6 +233,16 @@ async function probe(server, opts = {}) {
     r = await probeStdio(install, opts);
     // One retry with placeholder credentials if the server named what it needs.
     if (!r.ok && r.missingEnv && r.missingEnv.length) {
+      // Only substitute for names that look like credentials. A placeholder
+      // written into a variable that selects which tools register produces a
+      // listing that describes the probe, not the server. If any named
+      // variable is not credential-shaped, do not retry at all.
+      const nonCredential = r.missingEnv.filter((n) => !CREDENTIAL_ENV.test(n));
+      if (nonCredential.length) {
+        r.error = 'needs env that may gate the toolset (' + r.missingEnv.join(', ') + '); not probed with placeholders';
+        r.envGated = nonCredential;
+        return r;
+      }
       const env = {};
       for (const n of r.missingEnv) env[n] = 'mcp-pin-probe-placeholder';
       const r2 = await probeStdio(install, Object.assign({}, opts, { env }));
@@ -244,4 +258,4 @@ async function probe(server, opts = {}) {
   return { ok: true, setHash: fp.setHash, tools: fp.tools, count: fp.tools.length };
 }
 
-module.exports = { probe, probeStdio, probeHttp, installNpm };
+module.exports = { probe, probeStdio, probeHttp, installNpm, CREDENTIAL_ENV, detectMissingEnv };

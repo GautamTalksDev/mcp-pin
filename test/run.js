@@ -323,6 +323,21 @@ function s(id,result){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id,resu
 }
 
 process.stdout.write('security controls\n');
+process.stdout.write('probe env classification\n');
+{
+  const { CREDENTIAL_ENV } = require(path.join(ROOT, 'crawler/probe'));
+  t('credential-shaped names are placeholder-safe', () => {
+    for (const n of ['SPOTIFY_CLIENT_SECRET','GITHUB_TOKEN','OPENAI_API_KEY','DB_PASSWORD','SENTRY_DSN','SPOTIFY_CLIENT_ID']) {
+      assert.ok(CREDENTIAL_ENV.test(n), n + ' should be treated as a credential');
+    }
+  });
+  t('toolset-gating names are not placeholder-safe', () => {
+    for (const n of ['SPOTIFY_MCP_TOOLSETS','SPOTIFY_MCP_ENABLE_TOOLS','SPOTIFY_MCP_DISABLE_TOOLS','FEATURE_FLAGS','MCP_MODE']) {
+      assert.ok(!CREDENTIAL_ENV.test(n), n + ' must not receive a placeholder: it may change which tools register');
+    }
+  });
+}
+
 const sec = require(path.join(ROOT, 'crawler/security'));
 t('blocks cloud metadata address', () => assert.strictEqual(sec.isPrivateAddress('169.254.169.254'), true));
 t('blocks rfc1918 ranges', () => {
