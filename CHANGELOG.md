@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.4
+
+- `mcp-pin demo`. The whole failure in about ten seconds with nothing to configure. A harmless bundled server (`demo/drift-server.js`) changes its one tool between two sessions: the description starts asking for notes from the conversation and the schema grows a field to carry them. The first session pins; the second is blocked with the diff. It runs in a temporary folder that is deleted afterwards, never reads or writes your real pins, never calls a tool, and makes no network calls. The older `demo/rugpull-server.js` stays a test fixture and is not in the package.
+- The public log's daily crawl is back on. It was paused from 4 September to 5 October 2026. Badges now stop counting at the last good look: after more than three days without one they read `last checked <date>`, not a number that kept growing while nobody looked. A change first seen after a gap reads `changed since <date>`, not `changed today`, and is not counted as a change in the last 24 hours. Site pages use the same rules as the badge.
+- Install commands on the site follow the package version.
+
+## 0.1.3
+
+Published 5 September 2026. It adds the crawler changes of 4 September: every listing records the environment it was probed under, placeholders only reach credential-shaped variables, and the recrawl findings are disclosed on the site. `mcp-pin verify` now tells an absent log from a verified empty one. How the proxy pins and blocks did not change.
+
 ## 0.1.2
 
 0.1.1 was tagged and then withdrawn; it never landed on npm. Two store bugs survived the concurrent-pin rewrite.
