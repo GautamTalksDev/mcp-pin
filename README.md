@@ -16,6 +16,8 @@
 
 **Watch:** [The AI Tool You Approved Is Not the One Running Now](https://www.youtube.com/watch?v=tGtbDNr9qvE) (7 min), including the two bugs I shipped while building this.
 
+**Play:** [Spot the rug pull](https://mcp-pin.gautamkhosla.com/spot/) (60 seconds). Seven tools, eight seconds each: keep or block. Then see what mcp-pin flags.
+
 </div>
 
 ---
