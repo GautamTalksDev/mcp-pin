@@ -1,7 +1,9 @@
 name: crawl
 on:
-  # Off until probe env is recorded and placeholders are not fed into feature flags.
-  # schedule: [{ cron: '0 6 * * *' }]
+  # Resumed 2026-10-05. Every listing now records the env it was taken under
+  # (86f24c7) and placeholders only reach credential-shaped variables (d73af2c).
+  # Badges say when they last looked and how wide a change window is (badge.js).
+  schedule: [{ cron: '0 6 * * *' }]
   workflow_dispatch:
 permissions: { contents: read }
 concurrency:

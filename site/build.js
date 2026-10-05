@@ -10,7 +10,15 @@
 const fs = require('fs');
 const path = require('path');
 const { PublicLog } = require('../crawler/log');
-const { badgeFor, days } = require('../crawler/badge');
+const { badgeFor, status, between, days, WIDE_WINDOW_DAYS } = require('../crawler/badge');
+// Install commands on the site follow the version in package.json.
+const PKG = 'mcp-pin@' + require('../package.json').version;
+const MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
+  'September', 'October', 'November', 'December'];
+const longDate = (iso) => { const d = new Date(iso); return `${d.getUTCDate()} ${MONTHS_LONG[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
+// A change seen after a gap cannot be dated to the day it happened.
+const wideChange = (s) => !!(s.last_change_at && s.last_change_after &&
+  between(s.last_change_after, s.last_change_at) > WIDE_WINDOW_DAYS);
 
 // Under a day, "0d" reads like a bug next to "changed today". Show hours.
 function span(fromISO) {
@@ -128,6 +136,7 @@ input::placeholder{color:var(--night-dim)}
 .pg{background:rgba(63,185,80,.14);color:var(--grn-d)}
 .pa{background:rgba(210,153,34,.14);color:var(--amb-d)}
 .pr{background:rgba(248,81,73,.14);color:var(--red-d)}
+.px{background:rgba(139,148,158,.16);color:#8b949e}
 
 pre{background:var(--night);color:var(--night-fg);border-radius:12px;padding:18px;
   overflow-x:auto;font-size:13px;line-height:1.65;font-family:var(--mono)}
@@ -167,7 +176,7 @@ function page(title, body, opts = {}) {
 </nav></div>
 ${body}
 <div class="wrap"><footer>
-<p>mcp-pin keeps a public, append-only record of MCP tool definitions. Every entry is hash linked and every head is signed, so you can <a href="/log.ndjson">download the log</a> and check it yourself with <code><!--email_off-->npx --yes mcp-pin@0.1.2 verify-log<!--/email_off--></code>. You do not have to trust whoever runs this. The verifier pins <a href="/PUBLIC_KEY.txt">PUBLIC_KEY.txt</a>; it will not accept a head signed by whatever key arrives with the file.</p>
+<p>mcp-pin keeps a public, append-only record of MCP tool definitions. Every entry is hash linked and every head is signed, so you can <a href="/log.ndjson">download the log</a> and check it yourself with <code><!--email_off-->npx --yes ${PKG} verify-log<!--/email_off--></code>. You do not have to trust whoever runs this. The verifier pins <a href="/PUBLIC_KEY.txt">PUBLIC_KEY.txt</a>; it will not accept a head signed by whatever key arrives with the file.</p>
 <p>Crawling follows <code>tools/list</code> pagination, capped at 50 pages, once per server per day. No tool is ever called. To opt out, add your server to <a href="${REPO}/blob/main/OPTOUT.txt">OPTOUT.txt</a> or open an issue. Honoured on the next crawl, no justification needed.</p>
 <p>Run by Gautam Khosla as an independent open-source project. Not affiliated with
 Anthropic, the Model Context Protocol project, or any server listed here.
@@ -176,16 +185,11 @@ Anthropic, the Model Context Protocol project, or any server listed here.
 </footer></div></html>`;
 }
 
+// Same rules as the badge, so the page and the badge can never disagree.
+const PILL = { green: 'pg', amber: 'pa', red: 'pr', grey: 'px' };
 function pill(s) {
-  if (!s.set_hash) return '<span class="pill">unknown</span>';
-  if (!s.last_change_at) {
-    const t = days(s.first_seen_at);
-    return `<span class="pill pg">${t < 1 ? 'tracking started' : 'unchanged ' + t + 'd'}</span>`;
-  }
-  const d = days(s.last_change_at);
-  if (d < 1) return '<span class="pill pr">changed today</span>';
-  if (d <= 7) return `<span class="pill pa">changed ${d}d ago</span>`;
-  return `<span class="pill pg">unchanged ${d}d</span>`;
+  const st = status(s);
+  return `<span class="pill ${PILL[st.color]}">${esc(st.text)}</span>`;
 }
 
 function diffHtml(oldC, newC, name) {
@@ -253,8 +257,12 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
   const recent = byChange.filter((s) => s.last_change_at && days(s.last_change_at) <= 30);
   // The strongest single link on the page: a server that actually moved.
   const newest = byChange.find((s) => s.last_change_at) || null;
-  const last24 = byChange.filter((s) => s.last_change_at &&
+  // A change first seen today after a gap did not necessarily happen today.
+  const last24 = byChange.filter((s) => s.last_change_at && !wideChange(s) &&
     Date.now() - new Date(s.last_change_at).getTime() <= 86400000).length;
+  const gap = byChange.filter((s) => wideChange(s) && days(s.last_change_at) <= 30);
+  const gapFrom = gap.length ? gap.map((s) => s.last_change_after).sort()[0] : null;
+  const gapTo = gap.length ? gap.map((s) => s.last_change_at).sort().slice(-1)[0] : null;
 
   const rows = byChange.map((s) => `<div class="row">
 <div><div class="nm"><a href="/servers/${s.id}.html">${esc(s.name)}</a></div>
@@ -275,7 +283,7 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
   including changes the server did not announce. Client traffic is held until that check
   completes. Separately, it keeps this public record of what those definitions were, and when they moved.</p>
   <div class="copy">
-    <code id="cmd"><!--email_off-->npx --yes mcp-pin@0.1.2 -- &lt;your mcp server&gt;<!--/email_off--></code>
+    <code id="cmd"><!--email_off-->npx --yes ${PKG} -- &lt;your mcp server&gt;<!--/email_off--></code>
     <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('cmd').innerText);this.textContent='copied'">copy</button>
   </div>
   <p style="margin-top:20px">
@@ -320,6 +328,11 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
     <div class="fact"><b>${entries.length}</b><span>log entries</span></div>
     <div class="fact"><b>${last24}</b><span>changed in the last 24 hours</span></div>
   </div>
+  ${gap.length ? `<p style="color:var(--night-dim);max-width:62ch;margin:22px 0 0;font-size:15px">
+  The crawler was not running between ${esc(longDate(gapFrom))} and ${esc(longDate(gapTo))}.
+  When it looked again, ${gap.length} server${gap.length === 1 ? ' had' : 's had'} changed in that window.
+  The day each change happened is unknown, so those servers read <em>changed since</em> a date
+  instead of <em>changed today</em>. <a href="/about.html#paused">Why the crawler stopped</a></p>` : ''}
   <p style="color:var(--night-dim);max-width:62ch;margin:22px 0 0;font-size:15px">
   On 4 September 2026 every recorded server was re-probed with a crawler that follows
   <code>tools/list</code> pagination. 18 of 248 had a higher tool count; 0 of those 18 currently
@@ -355,7 +368,12 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
       }
       const curNames = new Set(cur.tools.map((t) => t.name));
       for (const t of prv.tools) if (!curNames.has(t.name)) parts.push(`<p class="del">tool removed: ${esc(t.name)}</p>`);
-      changes += `<h3 style="margin-top:36px">Changed ${esc(cur.observed_at.slice(0, 16).replace('T', ' '))} UTC</h3>`;
+      const seenAt = esc(cur.observed_at.slice(0, 16).replace('T', ' ')) + ' UTC';
+      // Only the latest change has its window in state; after a gap, say so.
+      const when = i === hist.length - 1 && wideChange(s)
+        ? `between ${esc(longDate(s.last_change_after))} and ${esc(longDate(s.last_change_at))} (first seen ${seenAt})`
+        : seenAt;
+      changes += `<h3 style="margin-top:36px">Changed ${when}</h3>`;
       if (sum.line) changes += `<p class="changed-summary">${sum.line}.</p>`;
       changes += parts.join('\n') || '<p class="body">Metadata changed.</p>';
     }
@@ -391,7 +409,7 @@ ${changes
 <h2 style="margin-top:56px">Watch this server yourself</h2>
 <p class="body">If you run this server, put the proxy in front of it. It pins these exact
 fingerprints on first connect and stops the session if they move.</p>
-<div class="copy"><code><!--email_off-->npx --yes mcp-pin@0.1.2 -- &lt;your ${esc(s.name)} command&gt;<!--/email_off--></code></div>
+<div class="copy"><code><!--email_off-->npx --yes ${PKG} -- &lt;your ${esc(s.name)} command&gt;<!--/email_off--></code></div>
 <p class="body" style="margin-top:18px">Or subscribe to this page's <a href="/feed/${s.id}.xml">RSS feed</a>
 to be told when it changes.</p>
 
@@ -478,6 +496,17 @@ toolset value reproduced on 4 September &mdash; published versions expose 96, 99
 than explained away. Machine-readable note:
 <a href="/env-conditioned-listings-2026-09-04.json">env-conditioned-listings-2026-09-04.json</a>.</p>
 
+<h2 id="paused" style="margin-top:52px">Crawl paused, 4 September to 5 October 2026</h2>
+<p class="body">The daily crawl was switched off on 4 September 2026 because of the two problems
+above: listings did not record the environment they were taken under, and placeholders could reach
+variables that decide which tools register. It was switched back on on 5 October 2026, once every
+listing recorded its probe environment and placeholders could only reach credential-shaped variables.</p>
+<p class="body">Nothing was observed in between. A change first seen when the crawl resumed could have
+happened on any day of that gap, so it reads <em>changed since 4 Sep</em>, not <em>changed today</em>.
+Badges also stop counting when the crawler stops looking: a server that has not been checked for more
+than three days reads <em>last checked</em> and a date, never a number that kept growing while nobody
+looked.</p>
+
 <h2 style="margin-top:52px">What this does not protect against</h2>
 <p class="body">mcp-pin detects when a server's tool definitions change between sessions,
 including changes the server did not announce. It does not protect you from a malicious
@@ -522,8 +551,9 @@ say what changed. Accuracy matters more to this project than completeness.</p>
 <h2 style="margin-top:52px">No warranty</h2>
 <p class="body">This is provided as is, without warranty of any kind, under the
 <a href="${REPO}/blob/main/LICENSE">MIT licence</a>. It is a hobby research project run by one
-person alongside university study. Do not treat it as a commercial service, do not build a
-compliance process on it, and do not assume it will still be running next year.
+person alongside university study. Do not treat it as a commercial service, and do not build a
+compliance process on it. The log and the badges are meant to keep running; if that ever changes,
+this page will say so before anything is switched off.
 The <a href="${REPO}/blob/main/docs/THREAT_MODEL.md">threat model</a> is explicit about what
 the tool does not defend against.</p>
 

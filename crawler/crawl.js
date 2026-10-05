@@ -120,12 +120,24 @@ function saveState(s) {
       if (isNew) newly++; else changed++;
     }
 
+    // The last time the previous set_hash was actually observed. Older state has
+    // no last_ok_at; a failed last probe means the last good look was earlier, so
+    // fall back to when that set_hash was first recorded (the widest honest bound).
+    const lastGood = prev
+      ? prev.last_ok_at || (!prev.last_error && prev.last_probe_at) || prev.last_change_at || prev.first_seen_at || null
+      : null;
+
     state.servers[s.id] = {
       id: s.id, name: s.name, source: s.source, description: s.description, homepage: s.homepage,
       set_hash: r.setHash, tool_count: r.count,
       first_seen_at: (prev && prev.first_seen_at) || now,
       last_probe_at: now,
+      last_ok_at: now,
       last_change_at: drifted ? now : (prev && prev.last_change_at) || null,
+      // A change is only known to have happened after the previous good look and
+      // by this one. After a gap (a paused crawl, a run of failed probes) that
+      // window is wide, and the badge has to say so rather than "changed today".
+      last_change_after: drifted ? lastGood : (prev && prev.last_change_after) || null,
       last_error: null,
     };
     return { id: s.id, ok: true, drifted };
