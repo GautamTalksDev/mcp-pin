@@ -117,6 +117,27 @@ npx --yes mcp-pin@0.2.0 wrap
 
 It finds the MCP servers configured in Claude Desktop, Claude Code, Cursor, VS Code, Gemini CLI, Devin Desktop, Windsurf, Cline and Codex, shows you what it will change, backs up each file to `~/.mcp-pin/backups`, and puts mcp-pin in front of every local server. Remote (URL) servers are left as they are, because the proxy speaks stdio only. Running it twice changes nothing; `mcp-pin unwrap` takes it out again. Restart the apps afterwards. Another app's config: `mcp-pin wrap --config <file>`. A project's shared `.mcp.json` is only touched with `--project`, because teammates use it too.
 
+## Ask mcp-pin from your AI app
+
+mcp-pin is also an MCP server. Add it like any other and your agent can check a public server before you install it, and tell you which of your servers is waiting for review after a block.
+
+```json
+{
+  "mcpServers": {
+    "mcp-pin": { "command": "npx", "args": ["-y", "mcp-pin@0.2.0", "lookup"] }
+  }
+}
+```
+
+| Tool | What it answers |
+|---|---|
+| `mcp_pin_server_status` | Has this public server's tool list changed, and when? From the signed public log. |
+| `mcp_pin_my_servers` | Which servers are pinned here, and is any change waiting for review? |
+| `mcp_pin_change_summary` | What kind of change is waiting: new instruction, new field, wording only... |
+| `mcp_pin_how_to_protect` | The exact setup steps for Claude Code, Cursor, Codex, VS Code and others. |
+
+All four are read-only. They never return third-party text, neither tool descriptions from the log nor the changed definitions of a pending review, because a tool's output goes straight to the model. Names are reduced to a safe character set; the rest is dates, counts, hashes and fixed label keys. Approving stays with you in a terminal. `mcp-pin lookup --http 8787` serves the two public tools over Streamable HTTP on localhost, for hosting as a remote connector; it never exposes the pins of the machine it runs on.
+
 ## Protect one MCP server in 60 seconds
 
 Pick the server with the most access. Filesystem, GitHub, SSH, Kubernetes, a database, anything cloud. Put `mcp-pin` in front of it.

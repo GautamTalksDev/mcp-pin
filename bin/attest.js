@@ -11,7 +11,8 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
-const { fingerprintToolset, fingerprintTool, sha256 } = require('../src/canonical');
+const { fingerprintTool, sha256 } = require('../src/canonical');
+const { observe, diffDefinitions, definitionFields, logDefinitions } = require('../src/definitions');
 const store = require('../src/store');
 const { collectAllTools, collectAllPrompts } = require('../src/list-tools');
 const { renderDrift, renderSummary, C } = require('../src/diff');
@@ -31,7 +32,8 @@ function usage(code) {
       `  mcp-pin approve <id>                    accept the last observed drift\n` +
       `  mcp-pin forget <id>                     drop a pin (re-pins on next run)\n` +
       `  mcp-pin verify                          verify the local log chain\n` +
-      `  mcp-pin demo                            watch a changed tool get blocked (10 s)\n\n` +
+      `  mcp-pin demo                            watch a changed tool get blocked (10 s)\n` +
+      `  mcp-pin lookup [--http <port>]          mcp-pin as an MCP server: status and review tools\n\n` +
       `  --name <label>   friendly name for this server\n` +
       `  --yes            auto-approve first pin only (never approves drift)\n\n` +
       `  wrap / unwrap:  --yes apply without asking   --dry-run show only\n` +
@@ -73,6 +75,12 @@ if (!argv.length) usage(1);
 
 try {
   if (sub === 'wrap' || sub === 'unwrap') cmdWrap(sub);
+  else if (sub === 'lookup') {
+    const lookup = require('../src/lookup');
+    const i = argv.indexOf('--http');
+    if (i !== -1) lookup.serveHttp(Number(argv[i + 1]) || 8787, '127.0.0.1');
+    else lookup.serveStdio();
+  }
   else if (sub === 'list') cmdList();
   else if (sub === 'show') cmdShow(argv[1]);
   else if (sub === 'review') cmdReview(argv[1]);
@@ -132,64 +140,6 @@ function modernMeta(m) {
   const out = { [PV]: meta[PV], [CC]: meta[CC] || {} };
   if (meta[CI]) out[CI] = meta[CI];
   return out;
-}
-
-// Everything the model reads from a server, observed in one place.
-function observe(tools, prompts, instructions) {
-  const fp = fingerprintToolset(tools);
-  const out = { setHash: fp.setHash, tools: fp.tools };
-  if (prompts) {
-    const pp = fingerprintToolset(prompts);
-    out.promptsHash = pp.setHash;
-    out.prompts = pp.tools;
-  }
-  out.instructions = instructions;
-  out.instructionsHash = instructions === null ? null : sha256(instructions);
-  return out;
-}
-
-function diffNamed(pinned, observed, what) {
-  const oldBy = new Map((pinned || []).map((t) => [t.name, t]));
-  const newBy = new Map((observed || []).map((t) => [t.name, t]));
-  const out = [];
-  for (const [name, t] of newBy) {
-    const o = oldBy.get(name);
-    if (!o) out.push({ kind: 'added', what, name });
-    else if (o.hash !== t.hash) out.push({ kind: 'changed', what, name, oldCanonical: o.canonical, newCanonical: t.canonical });
-  }
-  for (const name of oldBy.keys()) if (!newBy.has(name)) out.push({ kind: 'removed', what, name });
-  return out;
-}
-
-// Pins made by 0.1.4 and earlier cover tools only; their prompts and
-// instructions fields are undefined and are recorded on the next clean connect.
-function diffDefinitions(pin, obs) {
-  const drift = [];
-  if (pin.setHash !== obs.setHash) drift.push(...diffNamed(pin.tools, obs.tools, 'tool'));
-  if (pin.prompts !== undefined && obs.prompts !== undefined && pin.promptsHash !== obs.promptsHash) {
-    drift.push(...diffNamed(pin.prompts, obs.prompts, 'prompt'));
-  }
-  if (pin.instructionsHash !== undefined && pin.instructionsHash !== obs.instructionsHash) {
-    drift.push({ kind: 'instructions', oldText: pin.instructions, newText: obs.instructions });
-  }
-  return drift;
-}
-
-function definitionFields(src) {
-  const out = {};
-  for (const k of ['promptsHash', 'prompts', 'instructionsHash', 'instructions']) {
-    if (src[k] !== undefined) out[k] = src[k];
-  }
-  return out;
-}
-
-function logDefinitions(obs) {
-  return {
-    set_hash: obs.setHash,
-    tools: obs.tools.map((t) => ({ name: t.name, hash: t.hash, canonical_json: t.canonical })),
-    prompts: obs.prompts ? obs.prompts.map((t) => ({ name: t.name, hash: t.hash, canonical_json: t.canonical })) : undefined,
-    instructions_hash: obs.instructionsHash,
-  };
 }
 
 function runProxy() {
