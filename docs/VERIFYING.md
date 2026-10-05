@@ -5,14 +5,14 @@ A transparency log is only worth something if you can check it yourself. This pa
 ## The one command
 
 ```bash
-curl -O https://mcp-pin.gautamkhosla.com/log.ndjson
-curl -O https://mcp-pin.gautamkhosla.com/head.json
-curl -O https://mcp-pin.gautamkhosla.com/PUBLIC_KEY.txt
-npx --yes mcp-pin@0.1.2 verify-log .
+curl -LO https://mcp-pin.gautamkhosla.com/log.ndjson
+curl -LO https://mcp-pin.gautamkhosla.com/head.json
+curl -LO https://mcp-pin.gautamkhosla.com/PUBLIC_KEY.txt
+npx --yes mcp-pin@0.1.4 verify-log .
 ```
 
 ```
-public log OK, 4812 entries, chain intact, head signature valid
+public log OK, 454 entries, chain intact, head signature valid
 ```
 
 Non zero exit means something is wrong and you should say so publicly.

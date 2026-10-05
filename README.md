@@ -254,14 +254,14 @@ The badge only ever states a fact about time. It says `unchanged 91d` or `change
 The point of a transparency log is that you do not have to trust the people running it. Every entry is hash linked to the one before it, and the head is signed with Ed25519. The verifier pins `PUBLIC_KEY.txt`; it will not accept a head signed by whatever key arrives with the file.
 
 ```bash
-curl -O https://mcp-pin.gautamkhosla.com/log.ndjson
-curl -O https://mcp-pin.gautamkhosla.com/head.json
-curl -O https://mcp-pin.gautamkhosla.com/PUBLIC_KEY.txt
+curl -LO https://mcp-pin.gautamkhosla.com/log.ndjson
+curl -LO https://mcp-pin.gautamkhosla.com/head.json
+curl -LO https://mcp-pin.gautamkhosla.com/PUBLIC_KEY.txt
 npx --yes mcp-pin@0.1.4 verify-log .
 ```
 
 ```
-public log OK, 4812 entries, chain intact, head signature valid
+public log OK, 454 entries, chain intact, head signature valid
 ```
 
 Change one byte of any historical entry and that command exits non zero. If this project ever quietly edited history, anyone holding an older copy could prove it.
