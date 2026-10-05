@@ -977,6 +977,69 @@ process.stdout.write('package pinning\n');
   }
 }
 
+process.stdout.write('admin policy packs\n');
+{
+  const policy = require(path.join(ROOT, 'src/policy'));
+  const w = require(path.join(ROOT, 'src/wrap'));
+  const approved = {
+    files: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem', '/srv/docs'] },
+    'db.prod': { command: 'uvx', args: ['mcp-server-postgres'], env: { DATABASE_URL: 'postgres://u:hunter2@db/prod' } },
+    sentry: { type: 'http', url: 'https://mcp.sentry.dev/mcp' },
+  };
+  const lock = '/etc/mcp-pin/mcp-pin.lock';
+  const wrapped = ['npx', '-y', w.PKG, '--lock', lock, '--only-locked', '--name', 'files', '--', 'npx', '-y', '@modelcontextprotocol/server-filesystem', '/srv/docs'];
+  t('Claude Code: a fixed set and an approved catalog of exact wrapped commands', () => {
+    const r = policy.generate('claude-code', approved, { lock });
+    const mcp = JSON.parse(r.files['managed-mcp.json']).mcpServers;
+    assert.deepStrictEqual([mcp.files.command].concat(mcp.files.args), wrapped);
+    const s = JSON.parse(r.files['managed-settings.json']);
+    assert.strictEqual(s.allowManagedMcpServersOnly, true);
+    assert.deepStrictEqual(s.allowedMcpServers[0], { serverCommand: wrapped });
+    assert.deepStrictEqual(s.deniedMcpServers[0], { serverCommand: ['npx', '-y', '@modelcontextprotocol/server-filesystem', '/srv/docs'] });
+    assert.deepStrictEqual(s.allowedMcpServers[2], { serverUrl: 'https://mcp.sentry.dev/mcp' });
+    assert.ok(r.notes.some((n) => /DATABASE_URL has literal values/.test(n)), r.notes.join('\n'));
+  });
+  t('Copilot: the same exact commands, with no managed-only flag it does not document', () => {
+    const s = JSON.parse(policy.generate('copilot', approved, { lock }).files['managed-settings.json']);
+    assert.deepStrictEqual(s.allowedMcpServers[0], { serverCommand: wrapped });
+    assert.strictEqual(s.allowManagedMcpServersOnly, undefined);
+  });
+  t('Codex: every argument position pinned, and secrets forwarded by name, never written', () => {
+    const r = policy.generate('codex', approved, { lock });
+    const req = r.files['requirements.toml'];
+    assert.match(req, /\[mcp_servers\."db\.prod"\.identity\.command\]\nexecutable = "npx"/);
+    const dbArgs = ['-y', w.PKG, '--lock', lock, '--only-locked', '--name', 'db.prod', '--', 'uvx', 'mcp-server-postgres'];
+    assert.strictEqual((req.match(/match = "exact"/g) || []).length, (wrapped.length - 1) + dbArgs.length);
+    assert.match(req, /\[mcp_servers\.sentry\.identity\]\nurl = "https:\/\/mcp\.sentry\.dev\/mcp"/);
+    assert.match(r.files['config.toml'], /env_vars = \["DATABASE_URL"\]/);
+    assert.ok(!r.files['config.toml'].includes('hunter2'));
+  });
+  t('Cursor: one wildcard entry requires the wrapper, and the lock makes it the catalog', () => {
+    const txt = policy.generate('cursor', approved, { lock }).files['cursor-dashboard.txt'];
+    assert.ok(txt.includes(`*npx -y ${w.PKG} --lock ${lock} --only-locked --name * -- *`), txt);
+  });
+  const d = tmp('mcp-pin-policy-');
+  fs.writeFileSync(path.join(d, 'approved.json'), JSON.stringify({ mcpServers: approved }));
+  const rel = spawnSync(process.execPath, [ATTEST, 'policy', 'all', '--config', path.join(d, 'approved.json'), '--lock', 'mcp-pin.lock', '--out', path.join(d, 'out')], { encoding: 'utf8' });
+  t('a policy lock path must be absolute: managed servers do not start in a project folder', () => {
+    assert.strictEqual(rel.status, 1);
+    assert.ok(!fs.existsSync(path.join(d, 'out')));
+  });
+  const server = path.join(__dirname, 'era-server.js');
+  const home = path.join(d, 'home');
+  const env = Object.assign({}, process.env, { MCP_PIN_HOME: home, ATTEST_HOME: home, NO_COLOR: '1', ERA: 'legacy' });
+  const emptyLock = path.join(d, 'empty.lock');
+  fs.writeFileSync(emptyLock, JSON.stringify({ lockfileVersion: 1, servers: {} }));
+  const unlisted = spawnSync(process.execPath, [ATTEST, '--lock', emptyLock, '--only-locked', '--name', 'era', '--', process.execPath, server], { env, encoding: 'utf8', input: '', timeout: 10000 });
+  const noLock = spawnSync(process.execPath, [ATTEST, '--only-locked', '--name', 'era', '--', process.execPath, server], { env, encoding: 'utf8', input: '', timeout: 10000 });
+  t('--only-locked refuses a server the lock does not list, and needs a lock', () => {
+    assert.strictEqual(unlisted.status, 1);
+    assert.match(unlisted.stderr, /not starting .*: it is not in .*empty\.lock, and --only-locked runs only servers the lock approved/);
+    assert.strictEqual(noLock.status, 1);
+    assert.match(noLock.stderr, /--only-locked needs --lock/);
+  });
+}
+
 process.stdout.write('monthly drift report\n');
 {
   const { build } = require(path.join(ROOT, 'crawler/drift-report'));

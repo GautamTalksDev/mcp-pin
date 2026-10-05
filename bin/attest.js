@@ -27,6 +27,7 @@ function usage(code) {
       `  mcp-pin wrap                            protect every local MCP server in your AI apps\n` +
       `  mcp-pin unwrap                          take mcp-pin out of those configs again\n` +
       `  mcp-pin lock [--check]                  write or check the team's mcp-pin.lock\n` +
+      `  mcp-pin policy <product|all>            admin policy requiring mcp-pin: claude-code, copilot, codex, cursor\n` +
       `  mcp-pin list                            pinned servers\n` +
       `  mcp-pin show <id>                       pinned tool fingerprints\n` +
       `  mcp-pin review <id>                     show what changed since you approved it\n` +
@@ -37,7 +38,8 @@ function usage(code) {
       `  mcp-pin lookup [--http <port>]          mcp-pin as an MCP server: status and review tools\n\n` +
       `  --name <label>   friendly name for this server\n` +
       `  --yes            auto-approve first pin only (never approves drift)\n` +
-      `  --lock <file>    pin against a team lockfile instead of this machine's pin\n\n` +
+      `  --lock <file>    pin against a team lockfile instead of this machine's pin\n` +
+      `  --only-locked    with --lock: refuse to run a server the lock does not list\n\n` +
       `  lock:           --config <file> (default .mcp.json)   --out <file> (default mcp-pin.lock)\n` +
       `                  --definitions-only  skip package versions (for packages the registry will not show)\n` +
       `  wrap / unwrap:  --yes apply without asking   --dry-run show only\n` +
@@ -83,6 +85,7 @@ try {
   else if (sub === 'lock') {
     cmdLock().catch((e) => { process.stderr.write('mcp-pin lock: ' + e.message + '\n'); process.exit(2); });
   }
+  else if (sub === 'policy') cmdPolicy(argv[1]);
   else if (sub === 'lookup') {
     const lookup = require('../src/lookup');
     const i = argv.indexOf('--http');
@@ -176,6 +179,10 @@ function runProxy() {
   // review, rather than whatever this machine saw first. Unreadable or
   // tampered locks fail closed.
   const lockFlag = flags.indexOf('--lock') !== -1 ? flags[flags.indexOf('--lock') + 1] : null;
+  if (flags.includes('--only-locked') && !lockFlag) {
+    process.stderr.write('mcp-pin: --only-locked needs --lock <file>; not starting the server\n');
+    process.exit(1);
+  }
   let lockPin = null;
   let lockEntry = null;
   if (lockFlag) {
@@ -183,6 +190,11 @@ function runProxy() {
     try {
       lockEntry = lf.findEntry(lf.readLock(path.resolve(lockFlag)), nameFlag, id);
       if (lockEntry) lockPin = lf.asPin(lockEntry);
+      else if (flags.includes('--only-locked')) {
+        // An organisation's policy: only servers the lock approved may run.
+        process.stderr.write(`mcp-pin: not starting ${label}: it is not in ${lockFlag}, and --only-locked runs only servers the lock approved\n`);
+        process.exit(1);
+      }
       else process.stderr.write(C.dim(`mcp-pin: ${label} is not in ${lockFlag}; using this machine's pin\n`));
     } catch (e) {
       process.stderr.write('mcp-pin: cannot use the lockfile ' + path.resolve(lockFlag) + ': ' + e.message + '\n' +
@@ -835,6 +847,48 @@ function cmdWrap(mode) {
     if (/^y/i.test(ans.trim())) apply();
     else say('Nothing written.');
   });
+}
+
+// Admin policy that requires mcp-pin, from the servers in an approved config.
+// Written to a folder for review; deploying it is the admin's step.
+function cmdPolicy(product) {
+  const policy = require('../src/policy');
+  const opts = argv.slice(2);
+  const val = (flag, dflt) => { const i = opts.indexOf(flag); return i !== -1 && opts[i + 1] ? opts[i + 1] : dflt; };
+  const say = (s) => process.stdout.write(s + '\n');
+  const products = product === 'all' ? policy.PRODUCTS : [product];
+  if (!products.every((p) => policy.PRODUCTS.includes(p))) {
+    say(`usage: mcp-pin policy <${policy.PRODUCTS.join('|')}|all> [--config .mcp.json] [--lock <absolute path>] [--out mcp-pin-policy]`);
+    process.exitCode = 1;
+    return;
+  }
+  const config = path.resolve(val('--config', '.mcp.json'));
+  const lock = val('--lock', null);
+  if (lock && !path.isAbsolute(lock) && !/^[A-Za-z]:\\/.test(lock)) {
+    say('--lock needs the absolute path the lock will have on each machine, such as /etc/claude-code/mcp-pin.lock: managed servers do not start in a project folder.');
+    process.exitCode = 1;
+    return;
+  }
+  let doc;
+  try { doc = JSON.parse(fs.readFileSync(config, 'utf8')); } catch (e) {
+    say(`Cannot read ${config}: ${e.message}`);
+    process.exitCode = 1;
+    return;
+  }
+  const map = doc.mcpServers || doc.servers || {};
+  const n = Object.keys(map).length;
+  for (const p of products) {
+    const r = policy.generate(p, map, { lock });
+    const out = path.resolve(val('--out', 'mcp-pin-policy'), p);
+    fs.mkdirSync(out, { recursive: true });
+    for (const [file, body] of Object.entries(r.files)) fs.writeFileSync(path.join(out, file), body);
+    say(`${p}: wrote ${Object.keys(r.files).join(', ')} for ${n} server(s) to ${out}`);
+    for (const line of r.deploy) say('  ' + line);
+    for (const note of r.notes) say('  ' + note);
+    say('');
+  }
+  if (lock) say(`Deploy the lock at ${lock} on every machine as well. Each wrapped server checks it, and with --only-locked a server it does not list does not start.`);
+  say('These match each wrapped command exactly, so regenerate them when the approved list or the mcp-pin version changes. Deploying them is your step: nothing here is installed.');
 }
 
 async function cmdLock() {

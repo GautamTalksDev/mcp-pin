@@ -215,6 +215,7 @@ Your client gets an error that names the server, the review command and the labe
 | `mcp-pin wrap` / `unwrap` | Protect every local server in your AI apps, or undo it |
 | `mcp-pin lock` | Write the team's `mcp-pin.lock` from the project's `.mcp.json` |
 | `mcp-pin lock --check` | Compare every server with the lock; exit 1 on any change (for CI) |
+| `mcp-pin policy <product>` | Admin policy requiring mcp-pin: `claude-code`, `copilot`, `codex`, `cursor` or `all` |
 | `mcp-pin list` | Pinned servers, with drift flagged |
 | `mcp-pin show <id>` | Per tool fingerprints for one server |
 | `mcp-pin review <id>` | Show what changed since you approved it |
@@ -281,6 +282,28 @@ So the lock also records the package each server runs: the exact npm or PyPI ver
 - **`mcp-pin lock` updates.** It resolves the newest version, probes exactly that version and records it, so the pull request shows the version change and any definition change together.
 
 A published npm version or PyPI file cannot be replaced, so the version carries most of the weight. The digest catches a registry or mirror that serves something else, and a new file added to an old PyPI release. Understood: `npx`, `npm exec`, `pnpm dlx`, `yarn dlx`, `bunx`, `uvx` and `pipx run --spec`. A version range (`^1.2.0`) cannot be held, so `lock` asks for an exact version or a tag. Docker images are held only when the config pins a digest, and `mcp-pin wrap` points out every server whose package is not pinned. A package the registry will not show without credentials can be locked with `--definitions-only`.
+
+---
+
+## For admins: require mcp-pin across the organisation
+
+Write the approved servers in one config file, lock them, and generate the policy for the AI tools your organisation uses:
+
+```bash
+npx --yes mcp-pin@0.2.0 lock --config approved.json --out mcp-pin.lock
+npx --yes mcp-pin@0.2.0 policy all --config approved.json --lock /etc/mcp-pin/mcp-pin.lock
+```
+
+That writes, under `mcp-pin-policy/`, a policy for each product in which every approved local server runs through mcp-pin, pinned to the organisation's lock with `--only-locked`, so a server the lock does not list does not start. Deploy the lock to that path on every machine, and the policy files with your device management. Nothing is installed by the command.
+
+| Product | What is generated | What it can enforce |
+|---|---|---|
+| Claude Code | `managed-mcp.json` (a fixed set) or `managed-settings.json` (an approved catalog, `allowManagedMcpServersOnly`) | Only these exact wrapped commands run. Commands match exactly, every argument in order. |
+| GitHub Copilot, and VS Code | `managed-settings.json` | The same, in Copilot CLI, VS Code, JetBrains and the Copilot app. Not the Copilot cloud agent, which has only an on/off policy. VS Code does not yet enforce the list in Agent Host sessions (microsoft/vscode issue 328241). |
+| Codex | `requirements.toml` and a matching `config.toml` | A server runs only if its name and every argument of its wrapped command match. Secrets are forwarded by name with `env_vars`, never written into the file. |
+| Cursor | `cursor-dashboard.txt` to copy into Team Settings | One wildcard entry, `*npx -y mcp-pin@0.2.0 --lock ... --only-locked --name * -- *`, requires the wrapper for every server; with the lock it is also the approved catalog. Enterprise plan; turn off User MCP extensions. |
+
+What these controls compare is the configured command, not what it runs. That is why the lock matters: the policy makes every server go through mcp-pin, and mcp-pin checks the definitions and the package version against what the organisation approved. Because the matching is exact, regenerate the policy when the approved list or the mcp-pin version changes. Remote (HTTP) servers are listed by URL; mcp-pin cannot sit in front of them yet. Checked against each vendor's documentation on 5 October 2026.
 
 ---
 
