@@ -10,6 +10,7 @@ Up to 0.1.4 the proxy verified the toolset with its own `tools/list` request at 
 - Prompts and the server's instructions to the model are pinned with the tools. Pins made by 0.1.4 and earlier gain them on the next connect where nothing else changed.
 - A blocked session answers every request the client is waiting on with a JSON-RPC error (code `-31042`) that names the server and the review command, instead of exiting silently. The error never repeats the changed text.
 - `mcp-pin review <id>` prints what changed since you approved a server.
+- `mcp-pin wrap` puts the proxy in front of every local MCP server configured in Claude Desktop, Claude Code (user and project scopes in `~/.claude.json`), Cursor, VS Code, Gemini CLI, Devin Desktop, Windsurf, Cline and Codex (`config.toml`). It shows the plan, asks before writing (or takes `--yes`), backs each file up to `~/.mcp-pin/backups`, skips remote servers and entries that are already wrapped, and pins an exact mcp-pin version in every entry. `mcp-pin unwrap` reverses it. Pins are keyed by the original command, so wrapping keeps them.
 - When the client closes stdin, the proxy closes the server's stdin, so both exit cleanly.
 
 ## 0.1.4

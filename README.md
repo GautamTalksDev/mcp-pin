@@ -109,6 +109,14 @@ It lives in the README so it cannot be quietly renegotiated later.
 
 ---
 
+## Protect every server in one command
+
+```bash
+npx --yes mcp-pin@0.2.0 wrap
+```
+
+It finds the MCP servers configured in Claude Desktop, Claude Code, Cursor, VS Code, Gemini CLI, Devin Desktop, Windsurf, Cline and Codex, shows you what it will change, backs up each file to `~/.mcp-pin/backups`, and puts mcp-pin in front of every local server. Remote (URL) servers are left as they are, because the proxy speaks stdio only. Running it twice changes nothing; `mcp-pin unwrap` takes it out again. Restart the apps afterwards. Another app's config: `mcp-pin wrap --config <file>`. A project's shared `.mcp.json` is only touched with `--project`, because teammates use it too.
+
 ## Protect one MCP server in 60 seconds
 
 Pick the server with the most access. Filesystem, GitHub, SSH, Kubernetes, a database, anything cloud. Put `mcp-pin` in front of it.
@@ -168,6 +176,7 @@ Your client gets an error that names the server and the review command. It never
 | Command | What it does |
 |---|---|
 | `mcp-pin -- <cmd>` | Run a server behind the proxy |
+| `mcp-pin wrap` / `unwrap` | Protect every local server in your AI apps, or undo it |
 | `mcp-pin list` | Pinned servers, with drift flagged |
 | `mcp-pin show <id>` | Per tool fingerprints for one server |
 | `mcp-pin review <id>` | Show what changed since you approved it |

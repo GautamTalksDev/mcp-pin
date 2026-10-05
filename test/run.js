@@ -409,6 +409,95 @@ t('review shows the change to the human and approve re-pins it', () => {
   assert.match(r.out, /CLIENT SAW/);
 });
 
+process.stdout.write('wrap and unwrap\n');
+{
+  const w = require(path.join(ROOT, 'src/wrap'));
+  const desktop = {
+    mcpServers: {
+      files: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'], env: { A: '1' } },
+      remote: { url: 'https://example.com/mcp' },
+      done: { command: 'npx', args: ['-y', 'mcp-pin@0.1.4', '--', 'node', 's.js'] },
+    },
+  };
+  t('wrap protects stdio servers, keeps their env, skips remote and wrapped ones', () => {
+    const r = w.processJson(JSON.stringify(desktop, null, 2), 'wrap');
+    const doc = JSON.parse(r.text);
+    assert.deepStrictEqual(r.changes.map((c) => c.name), ['files']);
+    assert.deepStrictEqual(doc.mcpServers.files.args.slice(0, 5), ['-y', w.PKG, '--name', 'files', '--']);
+    assert.deepStrictEqual(doc.mcpServers.files.args.slice(5), ['npx', '-y', '@modelcontextprotocol/server-filesystem', '/tmp']);
+    assert.deepStrictEqual(doc.mcpServers.files.env, { A: '1' });
+    assert.deepStrictEqual(doc.mcpServers.remote, desktop.mcpServers.remote);
+    assert.deepStrictEqual(r.skipped.map((s) => s.name).sort(), ['done', 'remote']);
+  });
+  t('unwrap restores what wrap changed', () => {
+    const wrapped = w.processJson(JSON.stringify(desktop, null, 2), 'wrap').text;
+    const back = JSON.parse(w.processJson(wrapped, 'unwrap').text);
+    assert.deepStrictEqual(back.mcpServers.files, desktop.mcpServers.files);
+  });
+  t('wrap reaches Claude Code project scopes and VS Code servers', () => {
+    const doc = { mcpServers: {}, projects: { '/repo': { mcpServers: { db: { command: 'uvx', args: ['db-mcp'] } } } } };
+    const r = w.processJson(JSON.stringify(doc), 'wrap');
+    assert.deepStrictEqual(r.changes, [{ name: 'db', where: 'project /repo' }]);
+    const vs = w.processJson(JSON.stringify({ servers: { gh: { type: 'stdio', command: 'gh-mcp' }, web: { type: 'http', url: 'https://x' } } }), 'wrap');
+    assert.deepStrictEqual(vs.changes.map((c) => c.name), ['gh']);
+  });
+  t('wrap and unwrap round-trip a Codex config.toml', () => {
+    const toml = [
+      'model = "gpt-5"',
+      '',
+      '[mcp_servers.docs]',
+      'command = "npx"',
+      'args = ["-y", "docs-mcp"]',
+      '',
+      '[mcp_servers.bare]',
+      'command = "bare-mcp"',
+      '',
+      '[mcp_servers.remote]',
+      'url = "https://example.com/mcp"',
+      '',
+    ].join('\n');
+    const r = w.processToml(toml, 'wrap');
+    assert.deepStrictEqual(r.changes.map((c) => c.name), ['docs', 'bare']);
+    assert.match(r.text, /args = \["-y","mcp-pin@[^"]+","--name","docs","--","npx","-y","docs-mcp"\]/);
+    assert.match(r.text, /command = "npx"\nargs = \["-y","mcp-pin@[^"]+","--name","bare","--","bare-mcp"\]/);
+    const back = w.processToml(r.text, 'unwrap');
+    assert.match(back.text, /\[mcp_servers\.docs\]\ncommand = "npx"\nargs = \["-y","docs-mcp"\]/);
+    assert.match(back.text, /\[mcp_servers\.bare\]\ncommand = "bare-mcp"\nargs = \[\]/);
+  });
+  t('wrap --yes rewrites the real files, backs them up, and unwrap puts them back', () => {
+    const fake = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-wraphome-'));
+    const pinHome = path.join(fake, '.mcp-pin');
+    const env = Object.assign({}, process.env, {
+      HOME: fake, USERPROFILE: fake, APPDATA: path.join(fake, 'AppData', 'Roaming'), XDG_CONFIG_HOME: path.join(fake, '.config'),
+      MCP_PIN_HOME: pinHome, ATTEST_HOME: pinHome, NO_COLOR: '1',
+    });
+    const cursor = path.join(fake, '.cursor', 'mcp.json');
+    fs.mkdirSync(path.dirname(cursor), { recursive: true });
+    const original = JSON.stringify(desktop, null, 2) + '\n';
+    fs.writeFileSync(cursor, original);
+
+    const dry = spawnSync(process.execPath, [ATTEST, 'wrap'], { env, encoding: 'utf8', input: '' });
+    assert.match(dry.stdout, /\+ protect\s+files/);
+    assert.match(dry.stdout, /Nothing written/);
+    assert.strictEqual(fs.readFileSync(cursor, 'utf8'), original);
+
+    const r = spawnSync(process.execPath, [ATTEST, 'wrap', '--yes'], { env, encoding: 'utf8' });
+    assert.strictEqual(r.status, 0, r.stderr);
+    assert.match(fs.readFileSync(cursor, 'utf8'), /mcp-pin@/);
+    assert.strictEqual(fs.readdirSync(path.join(pinHome, 'backups')).length, 1);
+
+    const again = spawnSync(process.execPath, [ATTEST, 'wrap', '--yes'], { env, encoding: 'utf8' });
+    assert.match(again.stdout, /already protected/);
+
+    spawnSync(process.execPath, [ATTEST, 'unwrap', '--yes'], { env, encoding: 'utf8' });
+    const back = JSON.parse(fs.readFileSync(cursor, 'utf8')).mcpServers;
+    assert.deepStrictEqual(back.files, desktop.mcpServers.files);
+    assert.deepStrictEqual(back.remote, desktop.mcpServers.remote);
+    // unwrap takes mcp-pin out wherever it is, including entries wrapped by hand
+    assert.deepStrictEqual(back.done, { command: 'node', args: ['s.js'] });
+  });
+}
+
 process.stdout.write('github action\n');
 {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-action-'));

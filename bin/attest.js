@@ -22,6 +22,8 @@ function usage(code) {
   process.stderr.write(
     `mcp-pin, tool-integrity pinning for MCP\n\n` +
       `  mcp-pin -- <server command> [args...]   run a server behind the proxy\n` +
+      `  mcp-pin wrap                            protect every local MCP server in your AI apps\n` +
+      `  mcp-pin unwrap                          take mcp-pin out of those configs again\n` +
       `  mcp-pin list                            pinned servers\n` +
       `  mcp-pin show <id>                       pinned tool fingerprints\n` +
       `  mcp-pin review <id>                     show what changed since you approved it\n` +
@@ -30,7 +32,9 @@ function usage(code) {
       `  mcp-pin verify                          verify the local log chain\n` +
       `  mcp-pin demo                            watch a changed tool get blocked (10 s)\n\n` +
       `  --name <label>   friendly name for this server\n` +
-      `  --yes            auto-approve first pin only (never approves drift)\n`
+      `  --yes            auto-approve first pin only (never approves drift)\n\n` +
+      `  wrap / unwrap:  --yes apply without asking   --dry-run show only\n` +
+      `                  --config <file> another config   --project also ./.mcp.json\n`
   );
   process.exit(code);
 }
@@ -67,7 +71,8 @@ const sub = argv[0];
 if (!argv.length) usage(1);
 
 try {
-  if (sub === 'list') cmdList();
+  if (sub === 'wrap' || sub === 'unwrap') cmdWrap(sub);
+  else if (sub === 'list') cmdList();
   else if (sub === 'show') cmdShow(argv[1]);
   else if (sub === 'review') cmdReview(argv[1]);
   else if (sub === 'approve') cmdApprove(argv[1]);
@@ -712,6 +717,72 @@ function cmdApprove(k) {
   const fields = Object.assign(definitionFields(p), definitionFields(p.pending));
   store.setPin(k, pinRecord(p.id || k, p.label, { setHash: p.pending.setHash, tools: p.pending.tools }, fields));
   process.stdout.write(`re-pinned ${p.label} at ${p.pending.setHash.slice(0, 12)}\n`);
+}
+
+function cmdWrap(mode) {
+  const w = require('../src/wrap');
+  const opts = argv.slice(1);
+  const say = (s) => process.stdout.write(s + '\n');
+  const targets = w.knownClients();
+  for (let i = 0; i < opts.length; i++) {
+    if (opts[i] === '--config' && opts[i + 1]) targets.push({ name: 'Config', file: path.resolve(opts[++i]) });
+  }
+  // Project files are shared with teammates through the repo, so only on request.
+  if (opts.includes('--project')) targets.push({ name: 'This project', file: path.resolve('.mcp.json') });
+
+  const work = [];
+  let found = 0;
+  for (const c of targets) {
+    const r = w.processFile(c.file, mode);
+    if (r === null) continue;
+    found++;
+    if (r.error) { say(`${c.name}  ${c.file}\n  not changed: ${r.error}`); continue; }
+    if (!r.changes.length && !r.skipped.length) continue;
+    say(`${c.name}  ${c.file}`);
+    for (const ch of r.changes) {
+      const where = ch.where.startsWith('project ') ? `  (${ch.where})` : '';
+      say(`  ${mode === 'wrap' ? '+ protect  ' : '- unprotect'}  ${ch.name}${where}`);
+    }
+    for (const s of r.skipped) say(`    ${s.name}: ${s.reason}`);
+    if (r.changes.length) work.push({ c, r });
+  }
+
+  if (!found) {
+    say('No MCP config found for ' + w.knownClients().map((c) => c.name).join(', ') + '.');
+    say('Point at another one with: mcp-pin ' + mode + ' --config <file>');
+    return;
+  }
+  const n = work.reduce((a, x) => a + x.r.changes.length, 0);
+  if (!n) {
+    say(mode === 'wrap' ? 'Nothing to change: every local server found is already protected.' : 'Nothing to unwrap.');
+    return;
+  }
+  if (opts.includes('--dry-run')) { say('\nDry run: nothing written.'); return; }
+
+  const apply = () => {
+    const backups = path.join(store.HOME, 'backups');
+    for (const { c, r } of work) {
+      const b = w.backupAndWrite(c.file, r.text, backups);
+      say(`  wrote ${c.file}\n  backup ${b}`);
+    }
+    if (mode === 'wrap') {
+      say(`\nRestart those apps so they load the change. The first start fetches ${w.PKG} once.`);
+      say(`If your organisation allowlists MCP servers by command, the wrapped command is: npx -y ${w.PKG} --name <server> -- <original command>`);
+      say('Undo any time with: mcp-pin unwrap');
+    } else {
+      say('\nRestart those apps so they load the change. Your pins stay in place; mcp-pin wrap puts protection back.');
+    }
+  };
+
+  const verb = mode === 'wrap' ? 'Protect' : 'Unprotect';
+  if (opts.includes('--yes')) return apply();
+  if (!process.stdin.isTTY) { say('\nNothing written. Run again with --yes to apply.'); return; }
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  rl.question(`\n${verb} ${n} server(s)? Each file is backed up first. [y/N] `, (ans) => {
+    rl.close();
+    if (/^y/i.test(ans.trim())) apply();
+    else say('Nothing written.');
+  });
 }
 
 function cmdForget(k) {
