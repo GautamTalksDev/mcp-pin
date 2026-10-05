@@ -1,0 +1,15 @@
+{
+  "name": "mcp-pin",
+  "description": "mcp-pin for Claude Code: know when an MCP server's tools change after you approved them.",
+  "owner": {
+    "name": "Gautam Khosla",
+    "url": "https://github.com/GautamTalksDev"
+  },
+  "plugins": [
+    {
+      "name": "mcp-pin",
+      "source": "./plugins/mcp-pin",
+      "description": "Lookup tools for the mcp-pin public log and your pins, a skill for checking servers before you trust them, and a session-start note listing MCP servers that run without mcp-pin."
+    }
+  ]
+}

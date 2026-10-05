@@ -117,6 +117,19 @@ npx --yes mcp-pin@0.2.0 wrap
 
 It finds the MCP servers configured in Claude Desktop, Claude Code, Cursor, VS Code, Gemini CLI, Devin Desktop, Windsurf, Cline and Codex, shows you what it will change, backs up each file to `~/.mcp-pin/backups`, and puts mcp-pin in front of every local server. Remote (URL) servers are left as they are, because the proxy speaks stdio only. Running it twice changes nothing; `mcp-pin unwrap` takes it out again. Restart the apps afterwards. Another app's config: `mcp-pin wrap --config <file>`. A project's shared `.mcp.json` is only touched with `--project`, because teammates use it too.
 
+## One click, and the Claude Code plugin
+
+**[mcp-pin.gautamkhosla.com/install](https://mcp-pin.gautamkhosla.com/install/)** has *Add to Cursor* and *Add to VS Code* buttons, and a generator: paste any MCP server command and get it protected for Claude Code, Claude Desktop, Cursor, VS Code, Codex and the rest, plus an install link server authors can put in their own README.
+
+In Claude Code, the plugin adds the lookup tools below, a skill for checking a server before you trust it, and a one-line note at session start listing local servers that run without mcp-pin (it reads config files only and changes nothing):
+
+```bash
+claude plugin marketplace add GautamTalksDev/mcp-pin
+claude plugin install mcp-pin@mcp-pin
+```
+
+Agents that read Agent Skills from a folder (Muse Code reads `.agents/skills/`, for example) can use the same skill: copy [`plugins/mcp-pin/skills/mcp-pin`](plugins/mcp-pin/skills/mcp-pin) into that folder.
+
 ## Ask mcp-pin from your AI app
 
 mcp-pin is also an MCP server. Add it like any other and your agent can check a public server before you install it, and tell you which of your servers is waiting for review after a block.

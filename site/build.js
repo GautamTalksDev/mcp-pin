@@ -170,7 +170,7 @@ function page(title, body, opts = {}) {
 <div class="wrap"><nav>
 <img src="/logo.svg" width="26" height="26" alt="">
 <b style="font-weight:500">mcp-pin</b><span class="sp"></span>
-<a href="/">Log</a><a href="${REPO}#quick-start">Install</a>
+<a href="/">Log</a><a href="/install/">Install</a>
 <a href="/spot/">Play</a><a href="/about.html">About</a>
 <a href="${REPO}/blob/main/docs/VERIFYING.md">Verify</a><a href="${REPO}">GitHub</a>
 </nav></div>
@@ -250,6 +250,14 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
   for (const f of ['index.html', 'og.png']) {
     const p = path.join(__dirname, 'spot', f);
     if (fs.existsSync(p)) fs.copyFileSync(p, path.join(OUT, 'spot', f));
+  }
+  // Install page: one command, one-click buttons, and a generator for server
+  // authors. Its commands follow the version in package.json.
+  const install = path.join(__dirname, 'install', 'index.html');
+  if (fs.existsSync(install)) {
+    fs.mkdirSync(path.join(OUT, 'install'), { recursive: true });
+    const version = require('../package.json').version;
+    fs.writeFileSync(path.join(OUT, 'install', 'index.html'), fs.readFileSync(install, 'utf8').split('__MCP_PIN_VERSION__').join(version));
   }
   // log.ndjson outgrew Cloudflare Pages' 25 MiB per-file limit on 5 Oct 2026 (26.4 MiB),
   // which failed every deploy. site/_redirects sends /log.ndjson and /head.json to the

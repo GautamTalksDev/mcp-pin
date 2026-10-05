@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install mcp-pin</title>
+<meta name="description" content="Protect the MCP servers in your AI apps with mcp-pin: one command for every app, one click for Cursor and VS Code, and install buttons for server authors.">
+<style>
+:root{--ink:#161514;--muted:#5C5650;--paper:#F6F1E9;--card:#FFFFFF;--line:#E2D9CC;--accent:#B4232A}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:860px;margin:0 auto;padding:40px 20px 80px}
+a{color:var(--accent)}
+h1{font-size:clamp(36px,6vw,56px);line-height:1;margin:18px 0 12px;letter-spacing:-.02em}
+h2{font-size:24px;margin:0 0 6px}
+p{margin:0 0 12px}
+.lede{font-size:19px;color:#3D3833;max-width:640px}
+section{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px;margin-top:22px}
+.muted{color:var(--muted);font-size:15px}
+pre{margin:10px 0 0;background:#161514;color:#EDE7DD;border-radius:12px;padding:14px 16px;font:14px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word}
+.row{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.btn{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:999px;border:1.5px solid var(--ink);background:var(--ink);color:#FFFFFF;text-decoration:none;font-weight:600;cursor:pointer;font-size:15px}
+.btn.line{background:transparent;color:var(--ink)}
+label{display:block;font-weight:600;margin:14px 0 6px}
+input{width:100%;min-height:44px;border:1.5px solid var(--line);border-radius:12px;padding:0 14px;font:15px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#FFFFFF;color:var(--ink)}
+input:focus{outline:3px solid var(--accent);outline-offset:1px}
+nav{display:flex;justify-content:space-between;align-items:center;font-weight:700}
+nav a{color:var(--ink);text-decoration:none}
+</style>
+</head>
+<body>
+<main>
+<nav><a href="/">mcp-pin</a><a href="https://github.com/GautamTalksDev/mcp-pin" style="font-weight:500">GitHub</a></nav>
+<h1>Install mcp-pin</h1>
+<p class="lede">Pin the tools your AI apps approved, and block a server the moment they change. Free, MIT, nothing leaves your machine.</p>
+
+<section>
+<h2>Every app on this machine</h2>
+<p class="muted">Finds the MCP servers in Claude Desktop, Claude Code, Cursor, VS Code, Gemini CLI, Devin Desktop, Windsurf, Cline and Codex, shows you the plan, backs up each file, and protects every local server. Undo with <code>unwrap</code>.</p>
+<pre id="wrap-cmd">npx -y mcp-pin@__MCP_PIN_VERSION__ wrap</pre>
+<div class="row"><button class="btn line" type="button" data-copy="wrap-cmd">Copy</button></div>
+</section>
+
+<section>
+<h2>Claude Code plugin</h2>
+<p class="muted">Adds the mcp-pin lookup tools, a skill for checking servers before you trust them, and a note at session start listing servers that run without mcp-pin.</p>
+<pre id="plugin-cmd">claude plugin marketplace add GautamTalksDev/mcp-pin
+claude plugin install mcp-pin@mcp-pin</pre>
+<div class="row"><button class="btn line" type="button" data-copy="plugin-cmd">Copy</button></div>
+</section>
+
+<section>
+<h2>Ask mcp-pin from your AI app</h2>
+<p class="muted">The lookup server answers "has this server changed?" and "is anything waiting for my review?". Read-only, and it never passes third-party text to the model.</p>
+<div class="row">
+<a class="btn" id="lookup-cursor" href="#">Add to Cursor</a>
+<a class="btn" id="lookup-vscode" href="#">Add to VS Code</a>
+</div>
+<pre id="lookup-json"></pre>
+</section>
+
+<section>
+<h2>Protect one server</h2>
+<p class="muted">Paste the command you would normally run for an MCP server. You get that server behind mcp-pin, for each app.</p>
+<label for="srv-name">Server name</label>
+<input id="srv-name" value="filesystem" autocomplete="off" spellcheck="false">
+<label for="srv-cmd">Server command</label>
+<input id="srv-cmd" value="npx -y @modelcontextprotocol/server-filesystem /path/to/folder" autocomplete="off" spellcheck="false">
+<div class="row">
+<a class="btn" id="srv-cursor" href="#">Add to Cursor, protected</a>
+<a class="btn" id="srv-vscode" href="#">Add to VS Code, protected</a>
+</div>
+<label>Claude Code</label>
+<pre id="srv-claude"></pre>
+<label>Claude Desktop, Cursor, Gemini CLI and others (JSON)</label>
+<pre id="srv-json"></pre>
+<label>Codex (config.toml)</label>
+<pre id="srv-toml"></pre>
+<label>For server authors: an install button for your README</label>
+<pre id="srv-badge"></pre>
+</section>
+</main>
+<script>
+(function () {
+  var V = '__MCP_PIN_VERSION__';
+  var PKG = 'mcp-pin@' + V;
+  function $(id) { return document.getElementById(id); }
+  function b64(s) { return btoa(unescape(encodeURIComponent(s))); }
+  function cursorLink(name, cfg) {
+    return 'cursor://anysphere.cursor-deeplink/mcp/install?name=' + encodeURIComponent(name) + '&config=' + encodeURIComponent(b64(JSON.stringify(cfg)));
+  }
+  function vscodeLink(name, cfg) {
+    return 'vscode:mcp/install?' + encodeURIComponent(JSON.stringify({ name: name, command: cfg.command, args: cfg.args }));
+  }
+  // Split a command line the way a shell would for simple quoting.
+  function split(line) {
+    var out = [], cur = '', q = null, has = false;
+    for (var i = 0; i < line.length; i++) {
+      var c = line[i];
+      if (q) { if (c === q) q = null; else cur += c; continue; }
+      if (c === '"' || c === "'") { q = c; has = true; continue; }
+      if (/\s/.test(c)) { if (cur || has) { out.push(cur); cur = ''; has = false; } continue; }
+      cur += c;
+    }
+    if (cur || has) out.push(cur);
+    return out;
+  }
+  function safeName(s) { return String(s || '').replace(/[^A-Za-z0-9_.-]/g, '').slice(0, 64) || 'server'; }
+
+  var lookup = { command: 'npx', args: ['-y', PKG, 'lookup'] };
+  $('lookup-cursor').href = cursorLink('mcp-pin', lookup);
+  $('lookup-vscode').href = vscodeLink('mcp-pin', lookup);
+  $('lookup-json').textContent = JSON.stringify({ mcpServers: { 'mcp-pin': lookup } }, null, 2);
+
+  function render() {
+    var name = safeName($('srv-name').value);
+    var parts = split($('srv-cmd').value.trim());
+    if (!parts.length) parts = ['<your server command>'];
+    var cfg = { command: 'npx', args: ['-y', PKG, '--name', name, '--'].concat(parts) };
+    $('srv-cursor').href = cursorLink(name, cfg);
+    $('srv-vscode').href = vscodeLink(name, cfg);
+    $('srv-claude').textContent = 'claude mcp add ' + name + ' -- npx -y ' + PKG + ' --name ' + name + ' -- ' + parts.map(function (p) { return /\s/.test(p) ? JSON.stringify(p) : p; }).join(' ');
+    var one = {}; one[name] = cfg;
+    $('srv-json').textContent = JSON.stringify({ mcpServers: one }, null, 2);
+    $('srv-toml').textContent = '[mcp_servers.' + name + ']\ncommand = "npx"\nargs = ' + JSON.stringify(cfg.args);
+    var page = location.origin + '/install/#' + new URLSearchParams({ name: name, cmd: $('srv-cmd').value.trim() }).toString();
+    $('srv-badge').textContent = '[Install with mcp-pin](' + page + ')';
+  }
+  var pre = new URLSearchParams(location.hash.slice(1));
+  if (pre.get('name')) $('srv-name').value = pre.get('name');
+  if (pre.get('cmd')) $('srv-cmd').value = pre.get('cmd');
+  $('srv-name').addEventListener('input', render);
+  $('srv-cmd').addEventListener('input', render);
+  render();
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-copy]'), function (b) {
+    b.addEventListener('click', function () {
+      var text = $(b.getAttribute('data-copy')).textContent;
+      if (navigator.clipboard) navigator.clipboard.writeText(text).then(function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -606,6 +606,52 @@ process.stdout.write('lookup server\n');
   });
 }
 
+process.stdout.write('claude code plugin and install page\n');
+{
+  const read = (p) => JSON.parse(fs.readFileSync(path.join(ROOT, p), 'utf8'));
+  t('the marketplace lists the plugin under the name its manifest uses', () => {
+    const market = read('.claude-plugin/marketplace.json');
+    const entry = market.plugins.find((p) => p.name === 'mcp-pin');
+    assert.ok(entry && /^\.\//.test(entry.source) && !entry.source.includes('..'));
+    assert.strictEqual(read(path.join(entry.source, '.claude-plugin/plugin.json')).name, entry.name);
+    assert.ok(read('plugins/mcp-pin/hooks/hooks.json').hooks.SessionStart);
+  });
+  t('every place the plugin pins mcp-pin uses one version', () => {
+    const v = read('plugins/mcp-pin/.claude-plugin/plugin.json').version;
+    const pins = [
+      read('plugins/mcp-pin/.mcp.json').mcpServers['mcp-pin'].args[1],
+      fs.readFileSync(path.join(ROOT, 'plugins/mcp-pin/scripts/check-unprotected.js'), 'utf8').match(/mcp-pin@(\d+\.\d+\.\d+)/)[0],
+      fs.readFileSync(path.join(ROOT, 'plugins/mcp-pin/skills/mcp-pin/SKILL.md'), 'utf8').match(/mcp-pin@(\d+\.\d+\.\d+)/)[0],
+    ];
+    for (const p of pins) assert.strictEqual(p, 'mcp-pin@' + v);
+  });
+  t('the skill has the frontmatter agents need', () => {
+    const md = fs.readFileSync(path.join(ROOT, 'plugins/mcp-pin/skills/mcp-pin/SKILL.md'), 'utf8');
+    assert.match(md, /^---\nname: mcp-pin\ndescription: .{80,}\n---\n/);
+  });
+  t('the session-start note names unprotected servers only', () => {
+    const fake = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-cc-'));
+    const project = path.join(fake, 'repo');
+    fs.mkdirSync(project);
+    fs.writeFileSync(path.join(fake, '.claude.json'), JSON.stringify({
+      mcpServers: { files: { command: 'npx', args: ['-y', 'server-filesystem'] }, web: { type: 'http', url: 'https://x' } },
+      projects: { [project]: { mcpServers: { db: { command: 'npx', args: ['-y', 'mcp-pin@0.2.0', '--', 'db-mcp'] } } } },
+    }));
+    const env = Object.assign({}, process.env, { HOME: fake, USERPROFILE: fake, CLAUDE_PROJECT_DIR: project });
+    const script = path.join(ROOT, 'plugins/mcp-pin/scripts/check-unprotected.js');
+    const r = spawnSync(process.execPath, [script], { env, encoding: 'utf8' });
+    assert.match(r.stdout, /1 local MCP server\(s\) here run without mcp-pin \(files\)/);
+    fs.writeFileSync(path.join(fake, '.claude.json'), JSON.stringify({ mcpServers: { db: { command: 'npx', args: ['-y', 'mcp-pin@0.2.0', '--', 'db-mcp'] } } }));
+    assert.strictEqual(spawnSync(process.execPath, [script], { env, encoding: 'utf8' }).stdout, '');
+  });
+  t('the install page is self-contained and follows the package version', () => {
+    const html = fs.readFileSync(path.join(ROOT, 'site/install/index.html'), 'utf8');
+    assert.ok(!/<script[^>]+src=|<link[^>]+stylesheet|<form/i.test(html), 'the site CSP allows inline script and style only, and no forms');
+    assert.ok(html.includes('__MCP_PIN_VERSION__'));
+    assert.ok(fs.readFileSync(path.join(ROOT, 'site/build.js'), 'utf8').includes("split('__MCP_PIN_VERSION__')"));
+  });
+}
+
 process.stdout.write('github action\n');
 {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-action-'));
