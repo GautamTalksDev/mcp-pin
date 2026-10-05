@@ -79,6 +79,20 @@ jobs:
       - name: Verify the log before anything is published
         run: node bin/attest.js verify-log data
 
+      # The crawl job never holds the key, so crawl.js writes log_verified: false.
+      # Both checks above passed on this runner, so the published summary says so.
+      - name: Record the verification in the crawl summary
+        run: |
+          node -e "
+          const fs=require('fs');
+          const p='data/last-crawl.json';
+          const s=JSON.parse(fs.readFileSync(p,'utf8'));
+          const h=JSON.parse(fs.readFileSync('data/head.json','utf8'));
+          s.log_verified=true;
+          s.log_signed_at=h.signed_at;
+          fs.writeFileSync(p, JSON.stringify(s,null,2));
+          "
+
       - name: Build the site
         run: node site/build.js
 
