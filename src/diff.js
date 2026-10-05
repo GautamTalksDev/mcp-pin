@@ -48,14 +48,28 @@ function renderToolDiff(name, oldCanonical, newCanonical) {
   return lines.join('\n');
 }
 
+// The server's own instructions to the model, diffed line by line.
+function renderTextDiff(name, oldText, newText) {
+  const lines = [`--- pinned/${name}`, `+++ observed/${name}`];
+  const a = oldText == null ? ['(none)'] : String(oldText).split('\n');
+  const b = newText == null ? ['(none)'] : String(newText).split('\n');
+  for (const [mark, text] of lcsDiff(a, b)) {
+    if (mark === ' ') lines.push(C.dim('  ' + text));
+    else lines.push(mark === '-' ? C.red('- ' + text) : C.green('+ ' + text));
+  }
+  return lines.join('\n');
+}
+
 function renderDrift(driftList) {
   const out = [];
   for (const d of driftList) {
-    if (d.kind === 'added') out.push(C.green(`+ tool added: ${d.name}`));
-    else if (d.kind === 'removed') out.push(C.red(`- tool removed: ${d.name}`));
-    else out.push(renderToolDiff(d.name, d.oldCanonical, d.newCanonical));
+    const noun = d.what === 'prompt' ? 'prompt' : 'tool';
+    if (d.kind === 'added') out.push(C.green(`+ ${noun} added: ${d.name}`));
+    else if (d.kind === 'removed') out.push(C.red(`- ${noun} removed: ${d.name}`));
+    else if (d.kind === 'instructions') out.push(renderTextDiff('server-instructions', d.oldText, d.newText));
+    else out.push(renderToolDiff(noun === 'prompt' ? 'prompt:' + d.name : d.name, d.oldCanonical, d.newCanonical));
   }
   return out.join('\n\n');
 }
 
-module.exports = { renderDrift, renderToolDiff, C };
+module.exports = { renderDrift, renderToolDiff, renderTextDiff, C };

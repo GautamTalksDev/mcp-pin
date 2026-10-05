@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### A server could show the check one toolset and the client another
+
+Up to 0.1.4 the proxy verified the toolset with its own `tools/list` request at connect and then forwarded everything unchecked. Its requests carried recognisable ids (`mcp-pin-<pid>-<n>`), so a server could answer them with the approved tools and answer the client's own `tools/list` with different ones. The same gap let a server change its tools mid-session, after the check, which is how the Deadbugz campaign (Pillar Security, August 2026) behaves. Every `tools/list`, `prompts/list` and `server/discover` response the client asked for is now checked against the pin before it is delivered, for the whole session. A changed or added definition is never forwarded; the session is blocked.
+
+- MCP 2026-07-28. A client that opens with `server/discover` or any request carrying `_meta` protocol fields is verified with its own metadata, and a legacy server's answer to the `server/discover` probe reaches the client at once, so a dual-era client falls back to `initialize` without waiting out a timeout. Before this, such a client was held until it gave up, and a server that spoke only 2026-07-28 could not be verified at all.
+- Prompts and the server's instructions to the model are pinned with the tools. Pins made by 0.1.4 and earlier gain them on the next connect where nothing else changed.
+- A blocked session answers every request the client is waiting on with a JSON-RPC error (code `-31042`) that names the server and the review command, instead of exiting silently. The error never repeats the changed text.
+- `mcp-pin review <id>` prints what changed since you approved a server.
+- When the client closes stdin, the proxy closes the server's stdin, so both exit cleanly.
+
 ## 0.1.4
 
 - `mcp-pin demo`. The whole failure in about ten seconds with nothing to configure. A harmless bundled server (`demo/drift-server.js`) changes its one tool between two sessions: the description starts asking for notes from the conversation and the schema grows a field to carry them. The first session pins; the second is blocked with the diff. It runs in a temporary folder that is deleted afterwards, never reads or writes your real pins, never calls a tool, and makes no network calls. The older `demo/rugpull-server.js` stays a test fixture and is not in the package.

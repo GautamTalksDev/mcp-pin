@@ -297,6 +297,118 @@ t('queued tools/call does not run when definitions have drifted', () => {
   assert.ok(!fs.existsSync(effect), 'side-effect file must not exist after a blocked drifted session');
 });
 
+process.stdout.write('protocol eras and session checks\n');
+// Text only the changed tool carries. The client must never receive it.
+const SNEAKY = 'id_rsa';
+const tmp = (prefix) => fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+function era(mode, home, extra) {
+  const env = Object.assign({}, process.env, { MCP_PIN_HOME: home, ATTEST_HOME: home, NO_COLOR: '1' }, extra);
+  const r = spawnSync(process.execPath, [
+    path.join(__dirname, 'era-client.js'), mode, process.execPath, ATTEST, '--', process.execPath, path.join(__dirname, 'era-server.js'),
+  ], { env, encoding: 'utf8', timeout: 20000 });
+  return { out: r.stdout, err: r.stderr };
+}
+t('a 2026-07-28 client is verified with its own metadata and sees the tools', () => {
+  const home = tmp('mcp-pin-modern-');
+  const log = path.join(home, 'requests');
+  const r = era('modern', home, { ERA: 'modern', REQ_LOG: log });
+  assert.match(r.err, /pinned 1 tool/);
+  assert.match(r.out, /CLIENT SAW/);
+  assert.match(r.out, /EXIT 0/);
+  const own = fs.readFileSync(log, 'utf8').trim().split('\n').filter((l) => / mcp-pin-/.test(l));
+  assert.ok(own.length && own.every((l) => / meta$/.test(l)), 'mcp-pin requests without _meta: ' + own.join(' | '));
+});
+t('a changed tool blocks a 2026-07-28 session with an error that does not repeat the change', () => {
+  const home = tmp('mcp-pin-modern-drift-');
+  const env = { ERA: 'modern', STATE: path.join(home, 'starts'), TOOL_CHANGE_AT: '2' };
+  era('modern', home, env);
+  const r = era('modern', home, env);
+  assert.match(r.err, /TOOL DEFINITIONS CHANGED SINCE YOU APPROVED THIS SERVER/);
+  assert.match(r.out, /CLIENT ERROR .*-31042.*mcp-pin review/);
+  assert.ok(!/CLIENT SAW/.test(r.out), r.out);
+  assert.ok(!r.out.includes(SNEAKY), 'the client must never receive the changed text');
+  assert.match(r.out, /EXIT 42/);
+});
+t('a dual-era client falls back to initialize at once when the server is legacy', () => {
+  const home = tmp('mcp-pin-dual-');
+  const r = era('dual', home, { ERA: 'legacy' });
+  const ms = Number((r.out.match(/FALLBACK (\d+)/) || [])[1]);
+  assert.ok(ms >= 0 && ms < 3000, 'the probe answer took ' + ms + ' ms: ' + r.out);
+  assert.match(r.err, /pinned 1 tool/);
+  assert.match(r.out, /CLIENT SAW/);
+});
+t('a 2026-07-28 request with no probe first is held until the server is verified', () => {
+  const home = tmp('mcp-pin-direct-');
+  const r = era('direct', home, { ERA: 'modern' });
+  assert.match(r.err, /pinned 1 tool/);
+  assert.match(r.out, /CLIENT SAW/);
+});
+t('a server that shows mcp-pin one toolset and the client another is blocked', () => {
+  const home = tmp('mcp-pin-diverge-');
+  const r = era('legacy-twice', home, { ERA: 'legacy', DIVERGE: '1' });
+  assert.match(r.err, /CHANGED DURING THIS SESSION/);
+  assert.match(r.out, /CLIENT ERROR .*-31042/);
+  assert.ok(!r.out.includes(SNEAKY), r.out);
+  assert.match(r.out, /EXIT 42/);
+});
+t('a tool that changes mid-session is blocked before the client sees it', () => {
+  const home = tmp('mcp-pin-midsession-');
+  const r = era('modern-twice', home, { ERA: 'modern', MIDSESSION: '1' });
+  assert.strictEqual((r.out.match(/CLIENT SAW/g) || []).length, 1, r.out);
+  assert.match(r.out, /CLIENT ERROR .*-31042/);
+  assert.ok(!r.out.includes(SNEAKY), r.out);
+});
+t('changed server instructions are blocked', () => {
+  const home = tmp('mcp-pin-instr-');
+  const env = { ERA: 'modern', STATE: path.join(home, 'starts'), INSTR_CHANGE_AT: '2' };
+  era('modern', home, env);
+  const r = era('modern', home, env);
+  assert.match(r.err, /DEFINITIONS CHANGED SINCE YOU APPROVED THIS SERVER/);
+  assert.match(r.err, /server-instructions/);
+  assert.ok(!r.out.includes('notes along'), r.out);
+  assert.match(r.out, /EXIT 42/);
+});
+t('a changed prompt is blocked', () => {
+  const home = tmp('mcp-pin-prompt-');
+  const env = { ERA: 'modern', PROMPTS: '1', STATE: path.join(home, 'starts'), PROMPT_CHANGE_AT: '2' };
+  const r1 = era('prompts', home, env);
+  assert.match(r1.err, /pinned 1 tool\(s\) and 1 prompt/);
+  const r2 = era('prompts', home, env);
+  assert.match(r2.err, /prompt:forecast/);
+  assert.ok(!r2.out.includes('passwords'), r2.out);
+  assert.match(r2.out, /EXIT 42/);
+});
+t('pins from 0.1.4 gain prompts and instructions without a false block', () => {
+  const home = tmp('mcp-pin-upgrade-');
+  const env = { ERA: 'modern', PROMPTS: '1' };
+  era('modern', home, env);
+  const dir = path.join(home, 'pins.d');
+  const file = path.join(dir, fs.readdirSync(dir).find((f) => /^[a-f0-9]+\.json$/.test(f)));
+  const old = JSON.parse(fs.readFileSync(file, 'utf8'));
+  for (const k of ['prompts', 'promptsHash', 'instructions', 'instructionsHash']) delete old[k];
+  fs.writeFileSync(file, JSON.stringify(old));
+  const r = era('modern', home, env);
+  assert.match(r.err, /unchanged/);
+  assert.match(r.out, /CLIENT SAW/);
+  const now = JSON.parse(fs.readFileSync(file, 'utf8'));
+  assert.ok(now.promptsHash && now.instructionsHash, 'expected the old pin to be extended');
+});
+t('review shows the change to the human and approve re-pins it', () => {
+  const home = tmp('mcp-pin-review-');
+  const env = { ERA: 'modern', STATE: path.join(home, 'starts'), TOOL_CHANGE_AT: '2' };
+  era('modern', home, env);
+  era('modern', home, env);
+  const e = Object.assign({}, process.env, { MCP_PIN_HOME: home, ATTEST_HOME: home, NO_COLOR: '1' });
+  const sid = spawnSync(process.execPath, [ATTEST, 'list'], { env: e, encoding: 'utf8' }).stdout.trim().split(/\s+/)[0];
+  const review = spawnSync(process.execPath, [ATTEST, 'review', sid], { env: e, encoding: 'utf8' });
+  assert.match(review.stdout, /--- pinned\/weather/);
+  assert.ok(review.stdout.includes(SNEAKY), 'review shows the new text to the human');
+  const approve = spawnSync(process.execPath, [ATTEST, 'approve', sid], { env: e, encoding: 'utf8' });
+  assert.match(approve.stdout, /re-pinned/);
+  const r = era('modern', home, env);
+  assert.match(r.out, /CLIENT SAW/);
+});
+
 process.stdout.write('github action\n');
 {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-action-'));

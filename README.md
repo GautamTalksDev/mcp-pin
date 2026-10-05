@@ -79,7 +79,7 @@ flowchart LR
     PX -.->|optional submission| LG
 ```
 
-**The proxy** fingerprints every tool's full metadata at approval time and re-derives that decision on every connect. If anything changed, including a change the server did not announce, the session is blocked with a diff. Client traffic is queued until that check completes; on drift, nothing queued is forwarded.
+**The proxy** fingerprints every tool's full metadata at approval time, along with the server's prompts and its instructions to the model, and re-derives that decision on every connect. If anything changed, including a change the server did not announce, the session is blocked with a diff. Client traffic is queued until that check completes; on drift, nothing queued is forwarded. After that, every tool and prompt listing your client receives is checked against the pin before it is delivered, for the whole session, so a server cannot show the check one toolset and your client another, or change its tools halfway through. It speaks both the 2026-07-28 protocol (no `initialize` handshake) and the earlier ones.
 
 **The public log** crawls MCP servers on a schedule, records every version of every tool definition, and keeps the history. Hash linked, signed, downloadable, and verifiable by anyone with no need to trust whoever publishes it. The crawler follows `tools/list` pagination; versions ≤0.1.0 did not, and records from those crawls are a floor rather than a count for any paginated server.
 
@@ -124,7 +124,7 @@ Add it in front of a server in your client config:
   "mcpServers": {
     "weather": {
       "command": "npx",
-      "args": ["mcp-pin", "--", "node", "weather-server.js"]
+      "args": ["-y", "mcp-pin@0.1.4", "--", "node", "weather-server.js"]
     }
   }
 }
@@ -161,6 +161,8 @@ When the server changes its mind about what its tools do:
   Review the diff. If you accept it:  mcp-pin approve 10925a2854bb9568
 ```
 
+Your client gets an error that names the server and the review command. It never repeats the changed text, because clients can pass error messages to the model and that text is the attack. Read the diff in a terminal with `mcp-pin review <id>`.
+
 ### All commands
 
 | Command | What it does |
@@ -168,6 +170,7 @@ When the server changes its mind about what its tools do:
 | `mcp-pin -- <cmd>` | Run a server behind the proxy |
 | `mcp-pin list` | Pinned servers, with drift flagged |
 | `mcp-pin show <id>` | Per tool fingerprints for one server |
+| `mcp-pin review <id>` | Show what changed since you approved it |
 | `mcp-pin approve <id>` | Accept the last observed drift and re-pin |
 | `mcp-pin forget <id>` | Drop a pin, re-pin on next connect |
 | `mcp-pin verify` | Verify your local log chain |
@@ -175,11 +178,12 @@ When the server changes its mind about what its tools do:
 
 ### What it works with
 
-Dated, because this changes. Last verified **3 September 2026**.
+Dated, because this changes. Last verified **5 October 2026**.
 
 | | Status |
 |---|---|
 | stdio transport | Supported. This is the only transport the proxy speaks. |
+| MCP 2026-07-28 and earlier versions | Supported. Tested with test clients for both protocol generations and with the official TypeScript SDK 1.32.1, 5 Oct 2026 |
 | HTTP and SSE transport | **Not supported by the proxy.** The public log crawls them; the proxy cannot yet sit in front of them. |
 | Claude Desktop | Tested, 2 Sep 2026 |
 | Cursor, Cline, Codex, OpenCode | Not yet verified by me. They speak stdio, so it should work; if you try one, [open an issue](https://github.com/GautamTalksDev/mcp-pin/issues/new?title=Client%20report%3A%20) with your client, its version and what happened, and I will put the result in this table with your name on it. |
@@ -306,6 +310,7 @@ Listed here rather than buried, because a security tool that oversells itself is
 | **Paginated history before 0.1.1** | The crawler ignored `nextCursor`. A 4 September 2026 re-probe of all 248 recorded servers found 18 higher tool counts; **none of those 18 currently return `nextCursor`**. The extra tools were on page 1. See [the recrawl note](data/pagination-recrawl.json). |
 | **Day one malice is invisible** | This detects *change*. A server that ships hostile definitions on the very first connect and never changes them looks perfectly stable. |
 | **Not a prompt injection defence** | It does not inspect content or judge intent. It reports that bytes differ. |
+| **Prompt bodies and tool results** | Definitions are pinned: tools, prompts, and the server's instructions. The text a prompt returns when it is used (`prompts/get`) and what a tool call returns are produced per request and are not pinned. |
 | **Models sometimes catch this already** | Testing on 2 September 2026 showed Claude Desktop refusing obvious injected instructions in tool descriptions and warning the user unprompted. That defence depends on the payload being obvious. A deterministic check does not. |
 
 ---
