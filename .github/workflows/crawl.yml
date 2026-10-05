@@ -86,9 +86,22 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/log.ndjson data/head.json data/state.json data/last-crawl.json
-          git diff --staged --quiet || git commit -m "crawl: $(date -u +%F)"
-          git push
+          files="data/log.ndjson data/head.json data/state.json data/last-crawl.json"
+          git add $files
+          git diff --staged --quiet && exit 0
+          git commit -m "crawl: $(date -u +%F)"
+          signed=$(git rev-parse HEAD)
+          # main can move while the crawl runs (about 45 minutes). Run
+          # 37250226586 signed a full crawl and lost it to a rejected push.
+          # Replay the commit on the new main, but only if the files pushed
+          # are still exactly the ones signed and verified above. A conflict
+          # or any change to them fails the job. Never force.
+          for attempt in 1 2 3; do
+            git push origin HEAD:main && exit 0
+            git pull --rebase origin main
+            git diff --quiet "$signed" HEAD -- $files
+          done
+          exit 1
 
       - uses: actions/upload-artifact@v4
         with: { name: site, path: public, retention-days: 30 }
