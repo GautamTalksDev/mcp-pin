@@ -170,7 +170,7 @@ function page(title, body, opts = {}) {
 <div class="wrap"><nav>
 <img src="/logo.svg" width="26" height="26" alt="">
 <b style="font-weight:500">mcp-pin</b><span class="sp"></span>
-<a href="/">Log</a><a href="/install/">Install</a>
+<a href="/">Log</a><a href="/reports/">Reports</a><a href="/install/">Install</a>
 <a href="/spot/">Play</a><a href="/about.html">About</a>
 <a href="${REPO}/blob/main/docs/VERIFYING.md">Verify</a><a href="${REPO}">GitHub</a>
 </nav></div>
@@ -296,7 +296,7 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
   and because descriptions are read by the model as instructions, a changed description
   reaches as far as a changed system prompt.</p>
   <p class="lede">mcp-pin fingerprints the names, descriptions, schemas and annotations a third-party
-  stdio MCP server exposes, and detects when those definitions change between sessions —
+  stdio MCP server exposes, and detects when those definitions change between sessions,
   including changes the server did not announce. Client traffic is held until that check
   completes. Separately, it keeps this public record of what those definitions were, and when they moved.</p>
   <div class="copy">
@@ -477,11 +477,11 @@ ignored <code>nextCursor</code>. That is a real bug. A truncated server would ha
 badge against an incomplete toolset. On 4 September 2026 every server already in the log
 was re-probed with a crawler that follows pagination.</p>
 <p class="body"><strong>18 of 248 recorded servers had a higher tool count. 0 of those 18 currently
-return <code>nextCursor</code></strong> — the extra tools were already on page 1. The count changes are
+return <code>nextCursor</code></strong>: the extra tools were already on page 1. The count changes are
 not pagination recovery: none of the 18 returns <code>nextCursor</code>. A controlled re-probe on
 4 September reproduced all 18 counts exactly, so they are stable rather than probe noise.
 For 17 of them the increase is ordinary package drift between crawls. One,
-<code>@novalux12/spotify-mcp</code>, is still unexplained &mdash; see below. Five servers failed the
+<code>@novalux12/spotify-mcp</code>, is still unexplained; see below. Five servers failed the
 re-probe and are unknown. Historical responses did not store <code>nextCursor</code> or probe env.
 The machine-readable
 record is <a href="/pagination-recrawl.json">pagination-recrawl.json</a>) and <a href="/controlled-recrawl-2026-09-04.json">controlled-recrawl-2026-09-04.json</a>.</p>
@@ -501,14 +501,14 @@ verifies; the coverage does not. The log was not rewritten. Machine-readable not
 <code>@novalux12/spotify-mcp</code> reads <code>SPOTIFY_MCP_TOOLSETS</code>: unset or <code>all</code> registers 551 tools,
 <code>playback,library</code> registers 207, and an unrecognised value registers 4. The crawler did not
 record the environment a probe ran with, so a tool count in this log cannot be read as the
-server&rsquo;s full surface &mdash; only as what the server exposed to one probe.</p>
+server&rsquo;s full surface, only as what the server exposed to one probe.</p>
 <p class="body">A second defect compounds it. When a server reports that it needs environment
 variables, the probe retried with the literal string <code>mcp-pin-probe-placeholder</code> for each one.
 The detector did not distinguish credentials from feature flags, so a placeholder could be
 written into a variable that selects which tools register.</p>
 <p class="body"><strong>One case is unresolved.</strong> Entry 60 (3 September 2026) records 50 tools for
 <code>@novalux12/spotify-mcp</code>. No published version of that package exposes 50 tools under any
-toolset value reproduced on 4 September &mdash; published versions expose 96, 99, 100, 101, 154,
+toolset value reproduced on 4 September: published versions expose 96, 99, 100, 101, 154,
 313, 550 or 551, and the placeholder value exposes 4. All 50 logged names are a subset of the
 551. The mechanism that produced 50 is unknown, and it is recorded here as unknown rather
 than explained away. Machine-readable note:
@@ -584,13 +584,96 @@ For anything you would rather not discuss in public, my contact details are on m
 </section></div>`,
     { desc: 'Who runs mcp-pin, how the crawler behaves, and how to opt out.', path: '/about.html' }));
 
+  // ------------------------------------------------------------- reports
+  // Monthly drift reports from data/reports, written by crawler/drift-report.js.
+  // Counts per server only: the labels are totals, never shown against a name.
+  const REPORT_LABELS = [
+    ['new-tool', 'added a tool'],
+    ['removed', 'removed a tool'],
+    ['new-field', 'added an input field'],
+    ['field-removed', 'removed an input field'],
+    ['field-type', 'changed the type of an input field'],
+    ['output-schema', 'changed an output schema'],
+    ['hints', 'changed a permission hint (readOnlyHint and the like, which clients use to auto-approve)'],
+    ['instruction', 'added wording that tells the model what to do'],
+    ['secrets', 'added mentions of secrets or private files'],
+    ['link', 'added a link or address'],
+    ['hidden', 'added hidden or unusual characters'],
+    ['wording', 'changed wording only'],
+  ];
+  const monthName = (m) => `${MONTHS_LONG[Number(m.slice(5, 7)) - 1]} ${m.slice(0, 4)}`;
+  const reports = (() => {
+    try { return fs.readdirSync(path.join(DATA, 'reports')).filter((f) => /^\d{4}-\d{2}\.json$/.test(f)).sort().reverse(); } catch { return []; }
+  })().map((f) => JSON.parse(fs.readFileSync(path.join(DATA, 'reports', f), 'utf8')));
+  if (reports.length) {
+    fs.mkdirSync(path.join(OUT, 'reports'), { recursive: true });
+    for (const r of reports) {
+      const ch = r.changes;
+      const title = `MCP drift report, ${monthName(r.month)}`;
+      const rows = r.servers.filter((s) => safeId(s.id)).map((s) => {
+        const bits = [];
+        if (s.tools_added) bits.push(`${s.tools_added} added`);
+        if (s.tools_removed) bits.push(`${s.tools_removed} removed`);
+        if (s.tools_changed) bits.push(`${s.tools_changed} changed` + (s.schema_only ? `, ${s.schema_only} of them in the schema only` : ''));
+        const when = s.changes > 1
+          ? `changed ${s.changes} times, first seen ${longDate(s.first_seen_changed)}, last ${longDate(s.last_seen_changed)}`
+          : s.last_look_before
+            ? `changed between ${longDate(s.last_look_before)} and ${longDate(s.first_seen_changed)}`
+            : `first seen changed ${longDate(s.first_seen_changed)}`;
+        return `<div class="row"><div><div class="nm"><a href="/servers/${s.id}.html">${esc(s.name)}</a></div>
+<div class="meta">${esc(when)}</div></div>
+<div class="right"><div class="meta">tools: ${esc(bits.join('; ') || 'definitions changed')}</div></div></div>`;
+      }).join('\n');
+      const labels = REPORT_LABELS.filter(([k]) => ch.labels[k])
+        .map(([k, text]) => `<div class="row"><div class="nm">${esc(text)}</div><div class="right"><b>${ch.labels[k]}</b></div></div>`).join('\n');
+      const gaps = r.coverage.gaps.map((g) => `<p class="body">No crawl ran from ${esc(longDate(g.from))} to ${esc(longDate(g.to))}: ${esc(g.note)}. A change first seen after that gap happened at some point inside it.</p>`).join('\n');
+      fs.writeFileSync(path.join(OUT, 'reports', r.month + '.json'), JSON.stringify(r, null, 2));
+      fs.writeFileSync(path.join(OUT, 'reports', r.month + '.html'), page(title, `
+<div class="wrap"><div class="hero">
+  <h1 class="big">${esc(title)}</h1>
+  <p class="lede">${r.partial ? '<strong>Month in progress.</strong> ' : ''}What changed in the definitions of the MCP servers this log tracks,
+  counted from the signed public log on ${esc(longDate(r.generated_at))}. Every number here can be checked:
+  <a href="/reports/${r.month}.json">the report as JSON</a>, and the log it was counted from.</p>
+</div></div>
+<div class="dark"><div class="wrap"><div class="facts">
+  <div class="fact"><b>${ch.servers}</b><span>servers changed their tool definitions</span></div>
+  <div class="fact"><b>${r.coverage.tracked}</b><span>servers tracked by the end of the month</span></div>
+  <div class="fact"><b>${ch.tools.schemaOnly}</b><span>tools changed in the schema only, with the description untouched</span></div>
+  <div class="fact"><b>${r.coverage.recorded_new}</b><span>servers recorded for the first time</span></div>
+</div></div></div>
+<div class="wrap"><section>
+  <h2>Coverage</h2>
+  ${gaps || '<p class="body">The crawl ran without a recorded gap this month.</p>'}
+  ${ch.days_between_looks ? `<p class="body">Between the last look before a change and the first look that saw it: ${ch.days_between_looks.median} days at the median, ${ch.days_between_looks.max} at most.</p>` : ''}
+  <h2>What kinds of change</h2>
+  <p class="body">Servers with at least one change of each kind. A server can count under several. The labels are mechanical: each means the new definitions match a pattern the old ones did not, not that anyone did anything wrong, so they are totals and are never shown against a named server.</p>
+  ${labels || '<p class="body">No changes.</p>'}
+  <h2>Servers that changed</h2>
+  <p class="body">Each links to that server&rsquo;s full history, with every diff. Tool counts only.</p>
+  ${rows || '<p class="body">None.</p>'}
+  <h2>How this was counted</h2>
+  ${r.notes.map((n) => `<p class="body">${esc(n)}</p>`).join('\n')}
+</section></div>`, { desc: `${ch.servers} MCP servers changed their tool definitions in ${monthName(r.month)}. Counted from a signed public log.`, path: `/reports/${r.month}.html` }));
+    }
+    fs.writeFileSync(path.join(OUT, 'reports', 'index.html'), page('MCP drift reports', `
+<div class="wrap"><div class="hero">
+  <h1 class="big">MCP drift reports</h1>
+  <p class="lede">Each month: how many MCP servers changed what their tools tell the model, and what kind of change it was, counted from the signed public log.</p>
+</div></div>
+<div class="wrap"><section>
+${reports.map((r) => `<div class="row"><div class="nm"><a href="/reports/${r.month}.html">${esc(monthName(r.month))}${r.partial ? ' (in progress)' : ''}</a></div><div class="right"><div class="meta">${r.changes.servers} of ${r.coverage.tracked} servers changed</div></div></div>`).join('\n')}
+</section></div>`, { desc: 'Monthly reports on how MCP tool definitions change, from a signed public log.', path: '/reports/' }));
+  }
+
   // ------------------------------------------------- robots, sitemap, 404
   fs.copyFileSync(path.join(__dirname, '_headers'), path.join(OUT, '_headers'));
   fs.copyFileSync(path.join(__dirname, '_redirects'), path.join(OUT, '_redirects'));
   fs.writeFileSync(path.join(OUT, 'robots.txt'),
     `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml\n`);
 
-  const urls = ['/', '/spot/', '/about.html'].concat(servers.map((s) => `/servers/${s.id}.html`));
+  const urls = ['/', '/spot/', '/about.html']
+    .concat(reports.length ? ['/reports/'].concat(reports.map((r) => `/reports/${r.month}.html`)) : [])
+    .concat(servers.map((s) => `/servers/${s.id}.html`));
   fs.writeFileSync(path.join(OUT, 'sitemap.xml'),
     '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
     urls.map((u) => `  <url><loc>${SITE}${u}</loc><lastmod>${new Date().toISOString().slice(0, 10)}</lastmod></url>`).join('\n') +

@@ -328,6 +328,10 @@ flowchart TD
 
 The log records **changes**, not heartbeats. A server that never changes produces exactly one entry, which is why a quiet log is a good log.
 
+### The monthly drift report
+
+On the 1st of each month the crawl job counts the month that ended from the log it has just verified and publishes it at [/reports/](https://mcp-pin.gautamkhosla.com/reports/): how many servers changed their tool definitions, what kind of change it was (a new tool, a new input field, a flipped permission hint, new wording that instructs the model), and which servers, by count of tools. Gaps in the crawl are stated, and a change first seen after one is dated by the window it happened in, not by the day it was noticed. The labels are mechanical, so they are totals and never shown against a named server. Run it yourself with `npm run report:month -- --month 2026-10`; it writes `data/reports/2026-10.json`.
+
 ### The badge
 
 Server authors can show their users that their definitions are stable and being watched.

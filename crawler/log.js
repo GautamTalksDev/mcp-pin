@@ -106,6 +106,9 @@ class PublicLog {
       set_hash: record.set_hash,
       tools: record.tools,
     };
+    // The conditions the listing was taken under: env keys supplied and
+    // placeholders, never values. Up to 5 October 2026 this field was dropped.
+    if (record.probe_env !== undefined) body.probe_env = record.probe_env;
     body.entry_hash = sha256(canonicalize(body));
     fs.appendFileSync(this.file, JSON.stringify(body) + '\n');
     return body;

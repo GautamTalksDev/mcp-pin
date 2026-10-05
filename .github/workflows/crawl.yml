@@ -38,6 +38,7 @@ jobs:
             data/log.ndjson
             data/state.json
             data/last-crawl.json
+            data/crawls.ndjson
           retention-days: 7
 
   sign:
@@ -93,6 +94,12 @@ jobs:
           fs.writeFileSync(p, JSON.stringify(s,null,2));
           "
 
+      # On the 1st, the drift report for the month that just ended, counted
+      # from the log verified above.
+      - name: Monthly drift report
+        run: |
+          if [ "$(date -u +%d)" = "01" ]; then node crawler/drift-report.js; fi
+
       - name: Build the site
         run: node site/build.js
 
@@ -100,7 +107,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          files="data/log.ndjson data/head.json data/state.json data/last-crawl.json"
+          files="data/log.ndjson data/head.json data/state.json data/last-crawl.json data/crawls.ndjson"
+          [ -d data/reports ] && files="$files data/reports"
           git add $files
           git diff --staged --quiet && exit 0
           git commit -m "crawl: $(date -u +%F)"
