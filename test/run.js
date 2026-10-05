@@ -119,13 +119,34 @@ t('rejects a head signed by an untrusted key', () => {
 });
 
 process.stdout.write('badge\n');
+const ago = (d) => new Date(Date.now() - d * 86400000).toISOString();
 t('never-changed server reads unchanged', () => {
-  const svg = badgeFor({ set_hash: 'x', first_seen_at: new Date(Date.now() - 40 * 86400000).toISOString(), last_change_at: null });
+  const svg = badgeFor({ set_hash: 'x', first_seen_at: ago(40), last_change_at: null, last_ok_at: ago(0) });
   assert.ok(svg.includes('unchanged 40d'), svg.slice(0, 120));
 });
 t('recently changed server reads changed', () => {
-  const svg = badgeFor({ set_hash: 'x', first_seen_at: '2026-01-01T00:00:00Z', last_change_at: new Date().toISOString() });
+  const svg = badgeFor({ set_hash: 'x', first_seen_at: '2026-01-01T00:00:00Z', last_change_at: ago(0), last_change_after: ago(1), last_ok_at: ago(0) });
   assert.ok(svg.includes('changed today'));
+});
+t('stops counting when the crawler stops looking', () => {
+  const svg = badgeFor({ set_hash: 'x', first_seen_at: ago(40), last_change_at: null, last_probe_at: ago(30) });
+  assert.ok(svg.includes('last checked'), svg.slice(0, 160));
+  assert.ok(!svg.includes('unchanged'), 'a stale record must not claim unchanged');
+});
+t('a failed last probe is not a look', () => {
+  const svg = badgeFor({ set_hash: 'x', first_seen_at: ago(40), last_change_at: null, last_probe_at: ago(0), last_error: 'exited 1' });
+  assert.ok(svg.includes('last checked'), svg.slice(0, 160));
+  assert.ok(!svg.includes('unchanged'));
+});
+t('a change seen after a gap is not dated to today', () => {
+  const svg = badgeFor({ set_hash: 'x', first_seen_at: ago(40), last_change_at: ago(0), last_change_after: ago(31), last_ok_at: ago(0) });
+  assert.ok(svg.includes('changed since'), svg.slice(0, 160));
+  assert.ok(!svg.includes('changed today'));
+});
+t('unchanged counts to the last good look, not to now', () => {
+  const { status } = require(path.join(ROOT, 'crawler/badge'));
+  const s = status({ set_hash: 'x', first_seen_at: ago(40), last_change_at: null, last_ok_at: ago(2) });
+  assert.strictEqual(s.text, 'unchanged 38d');
 });
 
 process.stdout.write('proxy end to end\n');
