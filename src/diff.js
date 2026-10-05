@@ -72,4 +72,18 @@ function renderDrift(driftList) {
   return out.join('\n\n');
 }
 
-module.exports = { renderDrift, renderToolDiff, renderTextDiff, C };
+// The triage line per changed item, most serious first, before the full diff.
+function renderSummary(driftList) {
+  const { summarize } = require('./classify');
+  const rows = summarize(driftList);
+  const width = Math.min(28, Math.max(...rows.map((r) => r.name.length)));
+  const out = [C.bold('  What changed')];
+  for (const r of rows) {
+    const text = r.labels.map((l) => l.label).join('; ');
+    const line = `    ${r.name.padEnd(width)}  ${text}`;
+    out.push(r.level === 'high' ? C.red(line) : r.level === 'low' ? C.dim(line) : line);
+  }
+  return out.join('\n');
+}
+
+module.exports = { renderDrift, renderToolDiff, renderTextDiff, renderSummary, C };

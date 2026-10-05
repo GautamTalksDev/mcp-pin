@@ -169,7 +169,9 @@ When the server changes its mind about what its tools do:
   Review the diff. If you accept it:  mcp-pin approve 10925a2854bb9568
 ```
 
-Your client gets an error that names the server and the review command. It never repeats the changed text, because clients can pass error messages to the model and that text is the attack. Read the diff in a terminal with `mcp-pin review <id>`.
+Above the diff, every change is labelled so you can triage it at a glance: `New tool`, `New field: context`, `New instruction to the model`, `Mentions secrets or private files`, `New link or address`, `Hidden or unusual characters`, `Permission hint changed: readOnlyHint false to true`, or `Wording only`. The labels come from fixed rules over the two versions, not from a model, and they never unblock anything: every change still waits for you.
+
+Your client gets an error that names the server, the review command and the label names. It never repeats the changed text, because clients can pass error messages to the model and that text is the attack. Read the diff in a terminal with `mcp-pin review <id>`.
 
 ### All commands
 

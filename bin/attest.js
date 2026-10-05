@@ -14,7 +14,8 @@ const readline = require('readline');
 const { fingerprintToolset, fingerprintTool, sha256 } = require('../src/canonical');
 const store = require('../src/store');
 const { collectAllTools, collectAllPrompts } = require('../src/list-tools');
-const { renderDrift, C } = require('../src/diff');
+const { renderDrift, renderSummary, C } = require('../src/diff');
+const { summarize } = require('../src/classify');
 
 const argv = process.argv.slice(2);
 
@@ -335,7 +336,11 @@ function runProxy() {
       message: midSession
         ? `mcp-pin blocked "${label}": a definition changed during this session, so the response was not forwarded. Restart the server to review the change with: mcp-pin review ${id}`
         : `mcp-pin blocked "${label}": its definitions changed since you approved them, so nothing was forwarded. Review the change in a terminal with: mcp-pin review ${id}`,
-      data: { reason: 'definitions_changed', server: id, review: 'mcp-pin review ' + id },
+      // Label keys only: fixed strings, never the server's new text.
+      data: {
+        reason: 'definitions_changed', server: id, review: 'mcp-pin review ' + id,
+        changes: summarize(drift).map((s) => ({ name: s.name, kinds: s.labels.map((l) => l.key) })),
+      },
     };
     const ids = waitingIds(extraIds);
     state = BLOCKED;
@@ -357,6 +362,8 @@ function runProxy() {
       `  server: ${label}`,
       `  id:     ${id}`,
       `  pinned: ${pin && pin.pinned_at ? pin.pinned_at : 'unknown'}`,
+      '',
+      renderSummary(drift),
       '',
       renderDrift(drift),
       '',
@@ -703,7 +710,9 @@ function cmdReview(k) {
   if (!p.pending) { process.stdout.write(`nothing pending for ${p.label}\n`); return; }
   const drift = diffDefinitions(p, p.pending);
   process.stdout.write(`${p.label}\napproved  ${p.pinned_at}\nobserved  ${p.pending.observed_at}\n\n`);
-  process.stdout.write((drift.length ? renderDrift(drift) : 'No difference from what you approved.') + '\n\n');
+  process.stdout.write(drift.length
+    ? renderSummary(drift) + '\n\n' + renderDrift(drift) + '\n\n'
+    : 'No difference from what you approved.\n\n');
   process.stdout.write(`If you accept this change:  mcp-pin approve ${k}\nOtherwise, do nothing and the pin stands.\n`);
 }
 
