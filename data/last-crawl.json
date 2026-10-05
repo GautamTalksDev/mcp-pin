@@ -1,11 +1,11 @@
 {
-  "ran_at": "2026-09-02T08:09:35.378Z",
-  "duration_s": 14,
-  "candidates": 0,
-  "probed_ok": 0,
-  "failed": 0,
-  "newly_recorded": 0,
-  "changed": 0,
-  "log_size": 10,
-  "log_verified": true
+  "ran_at": "2026-10-05T14:51:39.074Z",
+  "duration_s": 2390,
+  "candidates": 600,
+  "probed_ok": 244,
+  "failed": 356,
+  "newly_recorded": 109,
+  "changed": 64,
+  "log_size": 454,
+  "log_verified": false
 }
