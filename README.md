@@ -93,6 +93,8 @@ npx --yes mcp-pin@0.1.4 demo
 
 A harmless bundled server changes its one tool between two sessions: the description starts asking for notes from the conversation, and the schema grows a field to carry them. The first session pins it. The second is blocked, with the diff. It runs in a temporary folder that is deleted afterwards, never touches your real pins, never calls a tool, and makes no network calls.
 
+mcp-pin is published on npm only. The Python package named `mcp-pin` on PyPI is a separate project, not affiliated with this one.
+
 ---
 
 ## Kill test
