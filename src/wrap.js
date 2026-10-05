@@ -57,9 +57,10 @@ function isWrapped(entry) {
   return entry.command === 'mcp-pin' || a.some((x) => typeof x === 'string' && /^mcp-pin(@|$)/.test(x));
 }
 
-function wrapEntry(name, entry) {
+// extra: proxy flags for this file, such as ['--lock', 'mcp-pin.lock'] for a project.
+function wrapEntry(name, entry, extra = []) {
   const args = Array.isArray(entry.args) ? entry.args : [];
-  return Object.assign({}, entry, { command: 'npx', args: ['-y', PKG, '--name', name, '--', entry.command].concat(args) });
+  return Object.assign({}, entry, { command: 'npx', args: ['-y', PKG].concat(extra, ['--name', name, '--', entry.command], args) });
 }
 
 function unwrapEntry(entry) {
@@ -70,11 +71,19 @@ function unwrapEntry(entry) {
 }
 
 // Decide what to do with one server entry. Returns null when it is not ours to touch.
-function plan(mode, name, entry) {
+function plan(mode, name, entry, extra = []) {
   if (!isStdio(entry)) return { name, skip: 'remote server: the proxy speaks stdio only' };
   if (mode === 'wrap') {
-    if (isWrapped(entry)) return { name, skip: 'already protected' };
-    return { name, next: wrapEntry(name, entry) };
+    if (isWrapped(entry)) {
+      // Already protected: only add flags it does not have yet (a team lock, say).
+      const a = Array.isArray(entry.args) ? entry.args : [];
+      const i = a.indexOf('--');
+      if (extra.length && i !== -1 && !a.slice(0, i).includes(extra[0])) {
+        return { name, next: Object.assign({}, entry, { args: a.slice(0, i).concat(extra, a.slice(i)) }) };
+      }
+      return { name, skip: 'already protected' };
+    }
+    return { name, next: wrapEntry(name, entry, extra) };
   }
   if (!isWrapped(entry)) return null;
   const next = unwrapEntry(entry);
@@ -98,7 +107,7 @@ function serverMaps(doc) {
   return maps;
 }
 
-function processJson(text, mode) {
+function processJson(text, mode, extra = []) {
   let doc;
   try { doc = JSON.parse(text); } catch (e) {
     return { error: 'not valid JSON (' + e.message + '); edit it by hand' };
@@ -107,7 +116,7 @@ function processJson(text, mode) {
   const skipped = [];
   for (const { where, map } of serverMaps(doc)) {
     for (const [name, entry] of Object.entries(map)) {
-      const p = plan(mode, name, entry);
+      const p = plan(mode, name, entry, extra);
       if (!p) continue;
       if (p.skip) { skipped.push({ name, where, reason: p.skip }); continue; }
       map[name] = p.next;
@@ -139,7 +148,7 @@ function parseTomlArray(v) {
   } catch { return undefined; }
 }
 
-function processToml(text, mode) {
+function processToml(text, mode, extra = []) {
   const eol = text.includes('\r\n') ? '\r\n' : '\n';
   const lines = text.split(/\r?\n/);
   const tables = [];
@@ -165,7 +174,7 @@ function processToml(text, mode) {
       skipped.push({ name: t.name, where: 'mcp_servers', reason: 'command or args in a form mcp-pin does not rewrite; edit it by hand' });
       continue;
     }
-    const p = plan(mode, t.name, { command, args });
+    const p = plan(mode, t.name, { command, args }, extra);
     if (!p) continue;
     if (p.skip) { skipped.push({ name: t.name, where: 'mcp_servers', reason: p.skip }); continue; }
     lines[t.command.i] = `${t.command.indent}command = ${JSON.stringify(p.next.command)}`;
@@ -180,13 +189,13 @@ function processToml(text, mode) {
 
 /* ------------------------------------------------------------ files */
 
-function processFile(file, mode) {
+function processFile(file, mode, extra = []) {
   let text;
   try { text = fs.readFileSync(file, 'utf8'); } catch (e) {
     if (e.code === 'ENOENT') return null;
     return { error: 'cannot read (' + e.message + ')' };
   }
-  return file.endsWith('.toml') ? processToml(text, mode) : processJson(text, mode);
+  return file.endsWith('.toml') ? processToml(text, mode, extra) : processJson(text, mode, extra);
 }
 
 function backupAndWrite(file, newText, backupDir) {

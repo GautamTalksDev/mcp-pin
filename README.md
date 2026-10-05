@@ -213,6 +213,8 @@ Your client gets an error that names the server, the review command and the labe
 |---|---|
 | `mcp-pin -- <cmd>` | Run a server behind the proxy |
 | `mcp-pin wrap` / `unwrap` | Protect every local server in your AI apps, or undo it |
+| `mcp-pin lock` | Write the team's `mcp-pin.lock` from the project's `.mcp.json` |
+| `mcp-pin lock --check` | Compare every server with the lock; exit 1 on any change (for CI) |
 | `mcp-pin list` | Pinned servers, with drift flagged |
 | `mcp-pin show <id>` | Per tool fingerprints for one server |
 | `mcp-pin review <id>` | Show what changed since you approved it |
@@ -232,6 +234,7 @@ Dated, because this changes. Last verified **5 October 2026**.
 | HTTP and SSE transport | **Not supported by the proxy.** The public log crawls them; the proxy cannot yet sit in front of them. |
 | Claude Desktop | Tested, 2 Sep 2026 |
 | Cursor, Cline, Codex, OpenCode | Not yet verified by me. They speak stdio, so it should work; if you try one, [open an issue](https://github.com/GautamTalksDev/mcp-pin/issues/new?title=Client%20report%3A%20) with your client, its version and what happened, and I will put the result in this table with your name on it. |
+| Windows | Supported. Servers started through `npx` or another `.cmd` shim work from 0.2.0; before that the proxy could start only `.exe` commands such as `node`, and failed with `spawn npx ENOENT`. Test suite run on Windows 11 with Node 24, 5 Oct 2026 |
 | Node | 20 or newer |
 
 I would rather this table be short and true than long and optimistic.
@@ -241,6 +244,29 @@ I would rather this table be short and true than long and optimistic.
 The whole tool object. Name, description, input schema, and annotations, canonicalized per [RFC 8785](https://www.rfc-editor.org/rfc/rfc8785) and hashed with SHA-256. Adding or removing a tool changes the set hash as well.
 
 The rule is simple. **If the model can read it, it is in scope.** Key order does not matter, tool order does not matter, whitespace does not matter. A single character of a description does.
+
+---
+
+## For teams: commit an mcp-pin.lock
+
+A pin on one laptop protects one person, from whatever that laptop saw first. A team that shares a `.mcp.json` can commit what it approved instead, and review every change to it like a dependency update.
+
+```bash
+npx --yes mcp-pin@0.2.0 lock
+npx --yes mcp-pin@0.2.0 wrap --project --lock mcp-pin.lock
+```
+
+The first command starts each local server in `.mcp.json`, reads what the model would read (tools, prompts and the server's instructions), stops it, and writes `mcp-pin.lock`. No tool is called. Every definition is stored as readable JSON, so the pull request that updates the lock shows exactly what a server now tells the model. The second puts the proxy in front of each server in the shared config, pointed at the lock:
+
+```json
+"args": ["-y", "mcp-pin@0.2.0", "--lock", "mcp-pin.lock", "--name", "files", "--", "npx", "-y", "@modelcontextprotocol/server-filesystem", "."]
+```
+
+Commit both files. From then on a server that differs from the lock is blocked on every teammate's machine, on the first run too, before anything is forwarded, and for the whole session. A lock that is missing, unreadable or edited by hand so it no longer matches its own hashes stops the server instead of falling back. A relative lock path is read from the folder the client starts the server in; if yours starts servers somewhere else, use an absolute path.
+
+In CI, `mcp-pin lock --check` starts each server, compares it with the lock, prints the same labels as a block and exits 1 on any change, including a command edited in `.mcp.json` without re-locking. When a change is expected, run `mcp-pin lock` and commit the new lock in a pull request, so a person reads it before anyone's agent does.
+
+`${VAR}`, `${VAR:-default}` and `${env:VAR}` in the config are filled in from the environment, the way clients do. A server that needs a credential just to list its tools needs it in CI as well.
 
 ---
 

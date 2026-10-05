@@ -7,7 +7,7 @@
  * usage:  npx mcp-pin -- <server command> [args...]
  *         npx mcp-pin list | show <id> | review <id> | approve <id> | forget <id> | verify
  */
-const { spawn } = require('child_process');
+const { spawnServer } = require('../src/spawn');
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
@@ -26,6 +26,7 @@ function usage(code) {
       `  mcp-pin -- <server command> [args...]   run a server behind the proxy\n` +
       `  mcp-pin wrap                            protect every local MCP server in your AI apps\n` +
       `  mcp-pin unwrap                          take mcp-pin out of those configs again\n` +
+      `  mcp-pin lock [--check]                  write or check the team's mcp-pin.lock\n` +
       `  mcp-pin list                            pinned servers\n` +
       `  mcp-pin show <id>                       pinned tool fingerprints\n` +
       `  mcp-pin review <id>                     show what changed since you approved it\n` +
@@ -35,9 +36,12 @@ function usage(code) {
       `  mcp-pin demo                            watch a changed tool get blocked (10 s)\n` +
       `  mcp-pin lookup [--http <port>]          mcp-pin as an MCP server: status and review tools\n\n` +
       `  --name <label>   friendly name for this server\n` +
-      `  --yes            auto-approve first pin only (never approves drift)\n\n` +
+      `  --yes            auto-approve first pin only (never approves drift)\n` +
+      `  --lock <file>    pin against a team lockfile instead of this machine's pin\n\n` +
+      `  lock:           --config <file> (default .mcp.json)   --out <file> (default mcp-pin.lock)\n` +
       `  wrap / unwrap:  --yes apply without asking   --dry-run show only\n` +
-      `                  --config <file> another config   --project also ./.mcp.json\n`
+      `                  --config <file> another config   --project also ./.mcp.json\n` +
+      `                  --lock <file> with --project: every teammate's proxy checks the lock\n`
   );
   process.exit(code);
 }
@@ -75,6 +79,9 @@ if (!argv.length) usage(1);
 
 try {
   if (sub === 'wrap' || sub === 'unwrap') cmdWrap(sub);
+  else if (sub === 'lock') {
+    cmdLock().catch((e) => { process.stderr.write('mcp-pin lock: ' + e.message + '\n'); process.exit(2); });
+  }
   else if (sub === 'lookup') {
     const lookup = require('../src/lookup');
     const i = argv.indexOf('--http');
@@ -164,7 +171,25 @@ function runProxy() {
     throw e;
   }
 
-  const child = spawn(command, args, { stdio: ['pipe', 'pipe', 'inherit'] });
+  // A team lockfile, when given, is the pin: what the project approved in
+  // review, rather than whatever this machine saw first. Unreadable or
+  // tampered locks fail closed.
+  const lockFlag = flags.indexOf('--lock') !== -1 ? flags[flags.indexOf('--lock') + 1] : null;
+  let lockPin = null;
+  if (lockFlag) {
+    const lf = require('../src/lockfile');
+    try {
+      const entry = lf.findEntry(lf.readLock(path.resolve(lockFlag)), nameFlag, id);
+      if (entry) lockPin = lf.asPin(entry);
+      else process.stderr.write(C.dim(`mcp-pin: ${label} is not in ${lockFlag}; using this machine's pin\n`));
+    } catch (e) {
+      process.stderr.write('mcp-pin: cannot use the lockfile ' + path.resolve(lockFlag) + ': ' + e.message + '\n' +
+        (path.isAbsolute(lockFlag) ? '' : '  A relative path is read from the folder your client started this server in (' + process.cwd() + '). If that is not the project folder, give an absolute path.\n'));
+      process.exit(1);
+    }
+  }
+
+  const child = spawnServer(command, args, { stdio: ['pipe', 'pipe', 'inherit'] });
   child.on('error', (e) => {
     process.stderr.write(`mcp-pin: cannot start server: ${e.message}\n`);
     process.exit(127);
@@ -285,7 +310,9 @@ function runProxy() {
       code: BLOCKED_CODE,
       message: midSession
         ? `mcp-pin blocked "${label}": a definition changed during this session, so the response was not forwarded. Restart the server to review the change with: mcp-pin review ${id}`
-        : `mcp-pin blocked "${label}": its definitions changed since you approved them, so nothing was forwarded. Review the change in a terminal with: mcp-pin review ${id}`,
+        : lockPin
+          ? `mcp-pin blocked "${label}": its definitions differ from the project's mcp-pin.lock, so nothing was forwarded. See what changed with: mcp-pin lock --check`
+          : `mcp-pin blocked "${label}": its definitions changed since you approved them, so nothing was forwarded. Review the change in a terminal with: mcp-pin review ${id}`,
       // Label keys only: fixed strings, never the server's new text.
       data: {
         reason: 'definitions_changed', server: id, review: 'mcp-pin review ' + id,
@@ -311,7 +338,7 @@ function runProxy() {
       '',
       `  server: ${label}`,
       `  id:     ${id}`,
-      `  pinned: ${pin && pin.pinned_at ? pin.pinned_at : 'unknown'}`,
+      `  pinned: ${lockPin ? lockFlag : pin && pin.pinned_at ? pin.pinned_at : 'unknown'}`,
       '',
       renderSummary(drift),
       '',
@@ -323,6 +350,13 @@ function runProxy() {
         C.bold('  This session is blocked. The changed response was not forwarded to your client.'),
         '  The server showed the approved definitions when it connected and changed them afterwards.',
         `  If you trust the change, restart the server and review it with:  ${C.bold('mcp-pin review ' + id)}`,
+        ''
+      );
+    } else if (lockPin) {
+      out.push(
+        C.bold('  This session is blocked. Nothing queued was forwarded to the server.'),
+        '  These definitions differ from what the project approved in mcp-pin.lock.',
+        `  If the change is expected, update the lock in a pull request so it is reviewed:  ${C.bold('mcp-pin lock')}`,
         ''
       );
     } else {
@@ -380,6 +414,16 @@ function runProxy() {
   }
 
   function check(obs) {
+    if (lockPin) {
+      const drift = diffDefinitions(lockPin, obs);
+      if (!drift.length) {
+        process.stderr.write(C.dim(`mcp-pin: ${obs.tools.length} tool(s) match ${lockFlag} (${obs.setHash.slice(0, 12)})\n`));
+        return { blocked: false, pin: lockPin };
+      }
+      store.append(Object.assign({ type: 'drift', server_id: id, label, against: 'lockfile', prev_set_hash: lockPin.setHash }, logDefinitions(obs)));
+      return { blocked: true, drift };
+    }
+
     const pin = store.getPin(id);
 
     if (!pin) {
@@ -686,13 +730,23 @@ function cmdWrap(mode) {
   for (let i = 0; i < opts.length; i++) {
     if (opts[i] === '--config' && opts[i + 1]) targets.push({ name: 'Config', file: path.resolve(opts[++i]) });
   }
-  // Project files are shared with teammates through the repo, so only on request.
-  if (opts.includes('--project')) targets.push({ name: 'This project', file: path.resolve('.mcp.json') });
+  // Project files are shared with teammates through the repo, so only on
+  // request. With --lock, every teammate's proxy checks the committed lock.
+  const lockArg = mode === 'wrap' && opts.includes('--lock') ? opts[opts.indexOf('--lock') + 1] : null;
+  if (lockArg) {
+    if (!opts.includes('--project')) { say('--lock is for the project\'s shared .mcp.json: add --project.'); process.exitCode = 1; return; }
+    try { require('../src/lockfile').readLock(path.resolve(lockArg)); } catch (e) {
+      say(`Cannot use ${lockArg} (${e.code === 'ENOENT' ? 'not found' : e.message}). Write it first with: mcp-pin lock`);
+      process.exitCode = 1;
+      return;
+    }
+  }
+  if (opts.includes('--project')) targets.push({ name: 'This project', file: path.resolve('.mcp.json'), extra: lockArg ? ['--lock', lockArg] : [] });
 
   const work = [];
   let found = 0;
   for (const c of targets) {
-    const r = w.processFile(c.file, mode);
+    const r = w.processFile(c.file, mode, c.extra);
     if (r === null) continue;
     found++;
     if (r.error) { say(`${c.name}  ${c.file}\n  not changed: ${r.error}`); continue; }
@@ -742,6 +796,73 @@ function cmdWrap(mode) {
     if (/^y/i.test(ans.trim())) apply();
     else say('Nothing written.');
   });
+}
+
+async function cmdLock() {
+  const lf = require('../src/lockfile');
+  const opts = argv.slice(1);
+  const val = (flag, dflt) => { const i = opts.indexOf(flag); return i !== -1 && opts[i + 1] ? opts[i + 1] : dflt; };
+  const config = path.resolve(val('--config', '.mcp.json'));
+  const out = path.resolve(val('--out', 'mcp-pin.lock'));
+  const check = opts.includes('--check');
+  const say = (s) => process.stdout.write(s + '\n');
+
+  const servers = lf.serversFrom(config);
+  const lock = fs.existsSync(out) ? lf.readLock(out) : null;
+  if (check && !lock) throw new Error('no lockfile at ' + out + '; write one with: mcp-pin lock');
+  if (!servers.length) { say('No local (stdio) MCP servers in ' + config + '.'); return; }
+
+  const next = {};
+  let changed = 0;
+  let failed = 0;
+  for (const s of servers) {
+    let obs;
+    try {
+      obs = await lf.probeDefinitions(s.command, s.args, s.env);
+    } catch (e) {
+      failed++;
+      say(`${s.name}: could not start (${e.message})`);
+      if (lock && lock.servers[s.name]) next[s.name] = lock.servers[s.name];
+      continue;
+    }
+    const prev = lock && lock.servers[s.name];
+    let prevPin = null;
+    try { prevPin = prev ? lf.asPin(prev) : null; } catch (e) { prevPin = e; }
+    if (!prev) {
+      if (check) changed++;
+      say(`${s.name}: ${check ? 'not in the lock' : 'locked'} (${obs.tools.length} tool(s))`);
+    } else if (prevPin instanceof Error) {
+      changed++;
+      say(`${s.name}: its entry in the lock is not valid: ${prevPin.message}${check ? '' : '. Rewritten from what the server serves now.'}`);
+    } else {
+      const drift = diffDefinitions(prevPin, obs);
+      if (prevPin.id !== s.id) { changed++; say(`${s.name}: its command in ${path.basename(config)} changed since it was locked`); }
+      else if (drift.length) { changed++; say(`${s.name}: changed since it was locked`); }
+      else say(`${s.name}: matches the lock`);
+      if (drift.length) say(renderSummary(drift));
+    }
+    next[s.name] = lf.toEntry(s, obs);
+  }
+  if (lock) {
+    for (const name of Object.keys(lock.servers)) {
+      if (!servers.some((s) => s.name === name)) { changed++; say(`${name}: in the lock but no longer in ${path.basename(config)}`); }
+    }
+  }
+
+  if (check) {
+    if (changed || failed) {
+      say(`\n${changed} server(s) differ from ${path.basename(out)}${failed ? `, ${failed} could not start` : ''}.`);
+      say('If the change is expected, run mcp-pin lock and commit the updated lockfile in a pull request.');
+      process.exit(1);
+    }
+    say(`\nAll ${servers.length} server(s) match ${path.basename(out)}.`);
+    return;
+  }
+  lf.writeLock(out, next);
+  say(`\nwrote ${out}`);
+  say('Commit it. A pull request that changes a server now shows exactly what its tools tell the model.');
+  say(`Pin each teammate's proxy to it: add "--lock", "${path.basename(out)}" before "--" in the server's args.`);
+  if (failed) process.exit(1);
 }
 
 function cmdForget(k) {

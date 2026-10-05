@@ -652,6 +652,167 @@ process.stdout.write('claude code plugin and install page\n');
   });
 }
 
+process.stdout.write('team lockfile\n');
+{
+  const dir = tmp('mcp-pin-lock-');
+  const home = path.join(dir, 'home');
+  const server = path.join(__dirname, 'era-server.js');
+  const state = path.join(dir, 'starts');
+  // The server changes its tool from its 3rd start on: lock, check, then the proxy sees the change.
+  const srvEnv = { ERA: 'legacy', STATE: state, TOOL_CHANGE_AT: '3' };
+  fs.writeFileSync(path.join(dir, '.mcp.json'), JSON.stringify({ mcpServers: { era: { command: process.execPath, args: [server], env: srvEnv } } }));
+  const lockFile = path.join(dir, 'mcp-pin.lock');
+  const env = Object.assign({}, process.env, { MCP_PIN_HOME: home, ATTEST_HOME: home, NO_COLOR: '1' });
+  const lock = (...extra) => spawnSync(process.execPath, [ATTEST, 'lock', '--config', path.join(dir, '.mcp.json'), '--out', lockFile, ...extra], { env, encoding: 'utf8', timeout: 30000 });
+
+  const w = lock();
+  t('mcp-pin lock records each server with readable definitions', () => {
+    assert.strictEqual(w.status, 0, w.stdout + w.stderr);
+    const doc = JSON.parse(fs.readFileSync(lockFile, 'utf8'));
+    assert.strictEqual(doc.lockfileVersion, 1);
+    assert.strictEqual(doc.servers.era.tools[0].definition.description, 'Get the current weather for a city.');
+  });
+  const c1 = lock('--check');
+  t('lock --check passes while nothing changed', () => {
+    assert.strictEqual(c1.status, 0, c1.stdout);
+    assert.match(c1.stdout, /era: matches the lock/);
+  });
+  const viaProxy = spawnSync(process.execPath, [
+    path.join(__dirname, 'era-client.js'), 'legacy-twice', process.execPath, ATTEST, '--lock', lockFile, '--name', 'era', '--', process.execPath, server,
+  ], { env: Object.assign({}, env, srvEnv), encoding: 'utf8', timeout: 20000 });
+  t('the proxy blocks a server that differs from the team lock', () => {
+    assert.match(viaProxy.stderr, /differ from what the project approved in mcp-pin\.lock/);
+    assert.match(viaProxy.stdout, /CLIENT ERROR .*mcp-pin\.lock/);
+    assert.ok(!viaProxy.stdout.includes(SNEAKY), viaProxy.stdout);
+  });
+  const c2 = lock('--check');
+  t('lock --check fails in CI with labels when a server changed', () => {
+    assert.strictEqual(c2.status, 1, c2.stdout);
+    assert.match(c2.stdout, /era: changed since it was locked/);
+    assert.match(c2.stdout, /New instruction to the model/);
+  });
+  t('a hand-edited lock that no longer matches its hashes fails closed', () => {
+    const doc = JSON.parse(fs.readFileSync(lockFile, 'utf8'));
+    doc.servers.era.tools[0].definition.description = 'Edited by hand';
+    const bad = path.join(dir, 'bad.lock');
+    fs.writeFileSync(bad, JSON.stringify(doc));
+    const r = spawnSync(process.execPath, [ATTEST, '--lock', bad, '--name', 'era', '--', process.execPath, server], { env: Object.assign({}, env, srvEnv), encoding: 'utf8', input: '', timeout: 10000 });
+    assert.strictEqual(r.status, 1);
+    assert.match(r.stderr, /does not match its hash/);
+  });
+  const lf = require(path.join(ROOT, 'src/lockfile'));
+  t('a lock whose set hash disagrees with its own tools is refused', () => {
+    const doc = JSON.parse(fs.readFileSync(lockFile, 'utf8'));
+    doc.servers.era.setHash = '0'.repeat(64);
+    assert.throws(() => lf.asPin(doc.servers.era), /does not match its own hashes/);
+  });
+  t('lock fills in ${VAR}, ${VAR:-default} and ${env:VAR} the way clients do', () => {
+    const e = { TOKEN: 'abc', EMPTY: '' };
+    assert.strictEqual(lf.expand('${TOKEN}', e), 'abc');
+    assert.strictEqual(lf.expand('x-${MISSING:-dflt}', e), 'x-dflt');
+    assert.strictEqual(lf.expand('${EMPTY:-dflt}', e), 'dflt');
+    assert.strictEqual(lf.expand('${env:TOKEN}', e), 'abc');
+    assert.strictEqual(lf.expand('${input:token}', e), '${input:token}');
+  });
+  t('the lock id comes from the shared config; the command that runs, from this machine', () => {
+    const cfg = path.join(dir, 'placeholders.json');
+    fs.writeFileSync(cfg, JSON.stringify({ mcpServers: { s: { command: 'node', args: ['${MCP_PIN_TEST_DIR}/server.js'], env: { K: '${MCP_PIN_TEST_DIR}' } } } }));
+    process.env.MCP_PIN_TEST_DIR = '/home/a';
+    const [s] = lf.serversFrom(cfg);
+    delete process.env.MCP_PIN_TEST_DIR;
+    assert.deepStrictEqual(s.args, ['/home/a/server.js']);
+    assert.strictEqual(s.env.K, '/home/a');
+    assert.strictEqual(s.id, require(path.join(ROOT, 'src/store')).serverId('node', ['${MCP_PIN_TEST_DIR}/server.js']));
+  });
+
+  // A server whose command differs per machine still matches the lock by name;
+  // a command edited in the shared config fails lock --check until re-locked.
+  const d2 = tmp('mcp-pin-lockname-');
+  const steady = { ERA: 'legacy', STATE: path.join(d2, 'starts') };
+  const cfg2 = path.join(d2, '.mcp.json');
+  const lock2 = path.join(d2, 'mcp-pin.lock');
+  const lockWith = (args, ...extra) => {
+    fs.writeFileSync(cfg2, JSON.stringify({ mcpServers: { era: { command: process.execPath, args, env: steady } } }));
+    return spawnSync(process.execPath, [ATTEST, 'lock', '--config', cfg2, '--out', lock2, ...extra], { env, encoding: 'utf8', timeout: 30000 });
+  };
+  lockWith([server]);
+  const sameDefs = spawnSync(process.execPath, [
+    path.join(__dirname, 'era-client.js'), 'legacy-twice', process.execPath, ATTEST, '--lock', lock2, '--name', 'era', '--', process.execPath, server, '--some-local-flag',
+  ], { env: Object.assign({}, env, steady), encoding: 'utf8', timeout: 20000 });
+  t('the proxy matches the lock by --name when the command differs on this machine', () => {
+    assert.match(sameDefs.stderr, /match .*mcp-pin\.lock/);
+    assert.match(sameDefs.stdout, /CLIENT SAW .*Get the current weather/);
+    assert.ok(!/CLIENT ERROR/.test(sameDefs.stdout), sameDefs.stdout);
+  });
+  const edited = lockWith([server, '--new-flag'], '--check');
+  t('lock --check fails when a command in the shared config changed', () => {
+    assert.strictEqual(edited.status, 1, edited.stdout);
+    assert.match(edited.stdout, /era: its command in \.mcp\.json changed since it was locked/);
+  });
+
+  // wrap --project --lock, with every app config pointed at an empty home.
+  const h = path.join(dir, 'h');
+  const homeOnly = Object.assign({}, env, { HOME: h, USERPROFILE: h, APPDATA: path.join(h, 'AppData'), XDG_CONFIG_HOME: path.join(h, '.config') });
+  const wrapIn = (...a) => spawnSync(process.execPath, [ATTEST, 'wrap', ...a], { cwd: dir, env: homeOnly, encoding: 'utf8', timeout: 20000 });
+  t('wrap --lock needs --project and an existing lock, and writes nothing otherwise', () => {
+    const before = fs.readFileSync(path.join(dir, '.mcp.json'), 'utf8');
+    const a = wrapIn('--lock', 'mcp-pin.lock', '--yes');
+    assert.strictEqual(a.status, 1);
+    assert.match(a.stdout, /add --project/);
+    const b = wrapIn('--project', '--lock', 'missing.lock', '--yes');
+    assert.strictEqual(b.status, 1);
+    assert.match(b.stdout, /not found\)\. Write it first with: mcp-pin lock/);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.mcp.json'), 'utf8'), before);
+  });
+  t('wrap --project --lock points every server in the shared config at the lock', () => {
+    const r = wrapIn('--project', '--lock', 'mcp-pin.lock', '--yes');
+    assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+    const e = JSON.parse(fs.readFileSync(path.join(dir, '.mcp.json'), 'utf8')).mcpServers.era;
+    assert.deepStrictEqual(e.args.slice(1, 7), [require(path.join(ROOT, 'src/wrap')).PKG, '--lock', 'mcp-pin.lock', '--name', 'era', '--']);
+  });
+  t('a server already wrapped without the lock gets it added, nothing else', () => {
+    const w = require(path.join(ROOT, 'src/wrap'));
+    const r = w.processJson(JSON.stringify({ mcpServers: { s: { command: 'npx', args: ['-y', 'mcp-pin@0.1.4', '--name', 's', '--', 'node', 's.js'] } } }), 'wrap', ['--lock', 'mcp-pin.lock']);
+    assert.deepStrictEqual(JSON.parse(r.text).mcpServers.s.args, ['-y', 'mcp-pin@0.1.4', '--name', 's', '--lock', 'mcp-pin.lock', '--', 'node', 's.js']);
+  });
+}
+
+process.stdout.write('starting servers on windows\n');
+{
+  const { plan, escapeArgument } = require(path.join(ROOT, 'src/spawn'));
+  const win = { platform: 'win32', cwd: 'C:\\proj', env: { Path: 'C:\\node;C:\\py', PATHEXT: '.COM;.EXE;.BAT;.CMD', ComSpec: 'C:\\Windows\\system32\\cmd.exe' } };
+  const has = (...files) => Object.assign({}, win, { exists: (f) => files.includes(f) });
+  t('npx and other .cmd shims run through cmd.exe, found on PATH', () => {
+    const p = plan('npx', ['-y', 'server@1.0.0'], has('C:\\node\\npx.cmd'));
+    assert.strictEqual(p.command, 'C:\\Windows\\system32\\cmd.exe');
+    assert.deepStrictEqual(p.args, ['/d', '/s', '/c', '"C:\\node\\npx.cmd ^"-y^" ^"server@1.0.0^""']);
+    assert.strictEqual(p.verbatim, true);
+  });
+  t('an .exe starts directly, as before', () => {
+    assert.deepStrictEqual(plan('node', ['server.js'], has('C:\\node\\node.exe')), { command: 'node', args: ['server.js'], verbatim: false });
+  });
+  t('other platforms are untouched', () => {
+    assert.deepStrictEqual(plan('npx', ['-y', 'x'], { platform: 'linux' }), { command: 'npx', args: ['-y', 'x'], verbatim: false });
+  });
+  t('arguments cannot break out into cmd.exe', () => {
+    assert.strictEqual(escapeArgument('a&b c'), '^"a^&b^ c^"');
+    assert.strictEqual(escapeArgument('say "hi"\\'), '^"say^ \\^"hi\\^"\\\\^"');
+    assert.strictEqual(escapeArgument('%PATH%|x', true), '^^^"^^^%PATH^^^%^^^|x^^^"');
+  });
+  if (process.platform === 'win32') {
+    const d = tmp('mcp-pin-cmd-');
+    fs.writeFileSync(path.join(d, 'era-shim.cmd'), `@"${process.execPath}" "${path.join(__dirname, 'era-server.js')}" %*\r\n`);
+    const winEnv = Object.assign({}, process.env, { MCP_PIN_HOME: path.join(d, 'home'), ATTEST_HOME: path.join(d, 'home'), NO_COLOR: '1', ERA: 'legacy', STATE: path.join(d, 'starts') });
+    const pk = Object.keys(winEnv).find((k) => k.toUpperCase() === 'PATH');
+    winEnv[pk] = d + ';' + winEnv[pk];
+    const r = spawnSync(process.execPath, [path.join(__dirname, 'era-client.js'), 'legacy-twice', process.execPath, ATTEST, '--name', 'shim', '--', 'era-shim', 'an arg & more'], { env: winEnv, encoding: 'utf8', timeout: 20000 });
+    t('on Windows the proxy starts a .cmd shim by bare name, as clients start npx', () => {
+      assert.match(r.stdout, /CLIENT SAW .*Get the current weather/, r.stdout + r.stderr);
+      assert.ok(!/CLIENT ERROR/.test(r.stdout), r.stdout);
+    });
+  }
+}
+
 process.stdout.write('github action\n');
 {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-action-'));
