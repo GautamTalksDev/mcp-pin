@@ -36,6 +36,8 @@ function list(id) {
 }
 
 readline.createInterface({ input: p.stdout }).on('line', (line) => {
+  // RAW_LOG=<file>: every byte the client received, before any parser picks a copy.
+  if (process.env.RAW_LOG) require('fs').appendFileSync(process.env.RAW_LOG, line + '\n');
   let m;
   try { m = JSON.parse(line); } catch { return; }
   if (m.error) console.log('CLIENT ERROR', JSON.stringify(m.error));

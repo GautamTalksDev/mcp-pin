@@ -48,4 +48,30 @@ function fingerprintToolset(tools) {
   return { setHash, tools: per };
 }
 
-module.exports = { canonicalize, sha256, fingerprintTool, fingerprintToolset };
+// True when any object in this JSON text repeats a member name. JSON.parse
+// keeps the last copy and some parsers keep the first, so a client could
+// read a value the check never saw. The text must already parse.
+function repeatsMemberName(text) {
+  const stack = []; // per open object: { names, expectName }; null for an array
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '"') {
+      let j = i + 1;
+      while (j < text.length && text[j] !== '"') j += text[j] === '\\' ? 2 : 1;
+      const top = stack[stack.length - 1];
+      if (top && top.expectName) {
+        const name = JSON.parse(text.slice(i, j + 1));
+        if (top.names.has(name)) return true;
+        top.names.add(name);
+        top.expectName = false;
+      }
+      i = j;
+    } else if (c === '{') stack.push({ names: new Set(), expectName: true });
+    else if (c === '[') stack.push(null);
+    else if (c === '}' || c === ']') stack.pop();
+    else if (c === ',' && stack[stack.length - 1]) stack[stack.length - 1].expectName = true;
+  }
+  return false;
+}
+
+module.exports = { canonicalize, sha256, fingerprintTool, fingerprintToolset, repeatsMemberName };

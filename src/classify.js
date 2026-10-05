@@ -34,7 +34,11 @@ const SIGNALS = [
     key: 'hidden',
     level: 'high',
     label: 'Hidden or unusual characters',
-    re: /([​-‏‪-‮⁠-⁤﻿]|[\u{E0000}-\u{E007F}]|<!--|[A-Za-z0-9+/]{48,}={0,2})/gu,
+    // Invisible and bidirectional characters, C1 controls, tag characters and
+    // variation selectors (both carry hidden text), terminal escape codes (as
+    // canonical JSON writes them: \u001b and the other \u00XX controls), HTML
+    // comments, and long base64-like runs.
+    re: /([\u{200b}-\u{200f}\u{202a}-\u{202e}\u{2060}-\u{2069}\u{feff}\u{61c}\u{7f}-\u{9f}]|[\u{e0000}-\u{e007f}\u{e0100}-\u{e01ef}]|(?<![\\])(?:[\\]{2})*[\\]u00[01][0-9a-f]|<!--|[A-Za-z0-9+/]{48,}={0,2})/gu,
   },
 ];
 

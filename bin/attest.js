@@ -11,11 +11,11 @@ const { spawnServer } = require('../src/spawn');
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
-const { fingerprintTool, sha256 } = require('../src/canonical');
+const { fingerprintTool, sha256, repeatsMemberName } = require('../src/canonical');
 const { observe, diffDefinitions, definitionFields, logDefinitions } = require('../src/definitions');
 const store = require('../src/store');
 const { collectAllTools, collectAllPrompts } = require('../src/list-tools');
-const { renderDrift, renderSummary, C } = require('../src/diff');
+const { renderDrift, renderSummary, visible, C } = require('../src/diff');
 const { summarize } = require('../src/classify');
 
 const argv = process.argv.slice(2);
@@ -210,6 +210,10 @@ function runProxy() {
   const discovers = new Map(); // client server/discover probes forwarded before verification
   const watched = new Map();   // client request id -> method, for responses checked before delivery
   const pending = new Map();   // mcp-pin's own requests
+  // A checked response that repeats a JSON member name could show the client
+  // a copy the check never read (JSON.parse keeps the last; some parsers keep
+  // the first), so it is never forwarded or pinned.
+  const REPEATED = 'the server repeated a JSON member name in a response mcp-pin checks; clients can read such a response differently from the check';
 
   function sendToServer(obj) {
     child.stdin.write(JSON.stringify(obj) + '\n');
@@ -372,15 +376,20 @@ function runProxy() {
     exitAfterFlush(42);
   }
 
-  function unverified(e) {
+  function unverified(e, extraIds, when) {
     const corrupt = e && e.name === 'CorruptStateError';
+    // The client may show this to the model, so a server's own error text
+    // is never repeated in it; mcp-pin's own reasons are fixed strings.
+    const reason = e && e.rpc ? 'the server answered the check with an error' : e && e.message;
     const reply = {
       code: UNVERIFIED_CODE,
       message: corrupt
         ? `mcp-pin could not read its pin store, so "${label}" was not started. See the message in the server log.`
-        : `mcp-pin could not verify "${label}" (${e && e.message}), so nothing was forwarded.`,
+        : when === 'session'
+          ? `mcp-pin stopped "${label}" (${reason}); the response was not forwarded.`
+          : `mcp-pin could not verify "${label}" (${reason}), so nothing was forwarded.`,
     };
-    const ids = waitingIds();
+    const ids = waitingIds(extraIds);
     state = BLOCKED;
     blockedReply = reply;
     rejectAll(new Error('session blocked'));
@@ -395,7 +404,7 @@ function runProxy() {
           'mcp-pin will not start until the store is readable.\n'
       );
     } else {
-      process.stderr.write('mcp-pin: verification failed: ' + (e && e.message) + '\n');
+      process.stderr.write('mcp-pin: verification failed: ' + visible(e && e.message) + '\n');
     }
     try { child.kill('SIGTERM'); } catch {}
     exitAfterFlush(1);
@@ -604,6 +613,8 @@ function runProxy() {
         p.reject(err);
       } else if (msg.result === undefined) {
         p.reject(new Error('malformed rpc result'));
+      } else if (repeatsMemberName(line)) {
+        p.reject(new Error(REPEATED));
       } else {
         p.resolve(msg.result);
       }
@@ -616,6 +627,10 @@ function runProxy() {
         const method = watched.get(k);
         if (method) {
           watched.delete(k);
+          if (repeatsMemberName(line)) {
+            unverified(new Error(REPEATED), [msg.id], 'session');
+            return;
+          }
           const drift = msg.result ? checkListing(method, msg.result) : [];
           if (drift.length) {
             try {
@@ -636,6 +651,10 @@ function runProxy() {
     if (isResponse(msg) && discovers.has(idKey(msg.id))) {
       const req = discovers.get(idKey(msg.id));
       discovers.delete(idKey(msg.id));
+      if (msg.result && repeatsMemberName(line)) {
+        unverified(new Error(REPEATED), [msg.id]);
+        return;
+      }
       if (msg.result && state === INIT) {
         held.push({ msg, line });
         startVerify('modern', modernMeta(req), { msg });
@@ -651,6 +670,10 @@ function runProxy() {
 
     if (state === INIT && era === 'legacy' && isResponse(msg)) {
       if (msg.result && msg.result.protocolVersion) {
+        if (repeatsMemberName(line)) {
+          unverified(new Error(REPEATED), [msg.id]);
+          return;
+        }
         held.push({ msg, line });
         startVerify('legacy', null, { msg });
         return;
@@ -692,8 +715,8 @@ function cmdShow(k) {
   const p = k && store.getPin(k);
   if (!p) { process.stderr.write('unknown server id\n'); process.exit(1); }
   process.stdout.write(`${p.label}\npinned ${p.pinned_at}\nset ${p.setHash}\n\n`);
-  for (const t of p.tools) process.stdout.write(`  ${t.hash.slice(0, 16)}  ${t.name}\n`);
-  for (const t of p.prompts || []) process.stdout.write(`  ${t.hash.slice(0, 16)}  prompt ${t.name}\n`);
+  for (const t of p.tools) process.stdout.write(`  ${t.hash.slice(0, 16)}  ${visible(t.name)}\n`);
+  for (const t of p.prompts || []) process.stdout.write(`  ${t.hash.slice(0, 16)}  prompt ${visible(t.name)}\n`);
   if (p.instructionsHash) process.stdout.write(`  ${p.instructionsHash.slice(0, 16)}  server instructions\n`);
   if (p.pending) process.stdout.write(`\nA change is waiting for review: mcp-pin review ${k}\n`);
 }
@@ -821,7 +844,7 @@ async function cmdLock() {
       obs = await lf.probeDefinitions(s.command, s.args, s.env);
     } catch (e) {
       failed++;
-      say(`${s.name}: could not start (${e.message})`);
+      say(`${s.name}: could not start (${visible(e.message)})`);
       if (lock && lock.servers[s.name]) next[s.name] = lock.servers[s.name];
       continue;
     }

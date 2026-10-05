@@ -34,7 +34,8 @@ async function collectAllList(sendRequest, method, field) {
       throw new Error(method + ': invalid nextCursor');
     }
     if (seen.has(next)) {
-      throw new Error(method + ': cursor loop at ' + next);
+      // Not the cursor itself: it is server text, and this message can reach the client.
+      throw new Error(method + ': the server repeated a page cursor');
     }
     seen.add(next);
     cursor = next;
