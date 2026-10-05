@@ -773,7 +773,7 @@ process.stdout.write('team lockfile\n');
     path.join(__dirname, 'era-client.js'), 'legacy-twice', process.execPath, ATTEST, '--lock', lockFile, '--name', 'era', '--', process.execPath, server,
   ], { env: Object.assign({}, env, srvEnv), encoding: 'utf8', timeout: 20000 });
   t('the proxy blocks a server that differs from the team lock', () => {
-    assert.match(viaProxy.stderr, /differ from what the project approved in mcp-pin\.lock/);
+    assert.match(viaProxy.stderr, /differ from what was approved in mcp-pin\.lock/);
     assert.match(viaProxy.stdout, /CLIENT ERROR .*mcp-pin\.lock/);
     assert.ok(!viaProxy.stdout.includes(SNEAKY), viaProxy.stdout);
   });

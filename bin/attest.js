@@ -340,9 +340,11 @@ function runProxy() {
     blockedReply = {
       code: BLOCKED_CODE,
       message: midSession
-        ? `mcp-pin blocked "${label}": a definition changed during this session, so the response was not forwarded. Restart the server to review the change with: mcp-pin review ${id}`
+        ? (lockPin
+          ? `mcp-pin blocked "${label}": a definition changed during this session and no longer matches the approved lock (${path.basename(lockFlag)}), so the response was not forwarded.`
+          : `mcp-pin blocked "${label}": a definition changed during this session, so the response was not forwarded. Restart the server to review the change with: mcp-pin review ${id}`)
         : lockPin
-          ? `mcp-pin blocked "${label}": its definitions differ from the project's mcp-pin.lock, so nothing was forwarded. See what changed with: mcp-pin lock --check`
+          ? `mcp-pin blocked "${label}": its definitions differ from the approved lock (${path.basename(lockFlag)}), so nothing was forwarded. Whoever maintains the lock can see what changed with: mcp-pin lock --check`
           : `mcp-pin blocked "${label}": its definitions changed since you approved them, so nothing was forwarded. Review the change in a terminal with: mcp-pin review ${id}`,
       // Label keys only: fixed strings, never the server's new text.
       data: {
@@ -380,13 +382,15 @@ function runProxy() {
       out.push(
         C.bold('  This session is blocked. The changed response was not forwarded to your client.'),
         '  The server showed the approved definitions when it connected and changed them afterwards.',
-        `  If you trust the change, restart the server and review it with:  ${C.bold('mcp-pin review ' + id)}`,
+        lockPin
+          ? `  If the change is expected, update ${path.basename(lockFlag)} in a pull request so it is reviewed:  ${C.bold('mcp-pin lock')}`
+          : `  If you trust the change, restart the server and review it with:  ${C.bold('mcp-pin review ' + id)}`,
         ''
       );
     } else if (lockPin) {
       out.push(
         C.bold('  This session is blocked. Nothing queued was forwarded to the server.'),
-        '  These definitions differ from what the project approved in mcp-pin.lock.',
+        `  These definitions differ from what was approved in ${path.basename(lockFlag)}.`,
         `  If the change is expected, update the lock in a pull request so it is reviewed:  ${C.bold('mcp-pin lock')}`,
         ''
       );
