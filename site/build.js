@@ -251,7 +251,10 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
     const p = path.join(__dirname, 'spot', f);
     if (fs.existsSync(p)) fs.copyFileSync(p, path.join(OUT, 'spot', f));
   }
-  for (const f of ['log.ndjson', 'head.json', 'pagination-recrawl.json', 'incomplete-crawl-2026-09-04.json', 'env-conditioned-listings-2026-09-04.json', 'controlled-recrawl-2026-09-04.json']) {
+  // log.ndjson outgrew Cloudflare Pages' 25 MiB per-file limit on 5 Oct 2026 (26.4 MiB),
+  // which failed every deploy. site/_redirects sends /log.ndjson and /head.json to the
+  // same two files in the repository, so a verifier always gets a log and head from one commit.
+  for (const f of ['pagination-recrawl.json', 'incomplete-crawl-2026-09-04.json', 'env-conditioned-listings-2026-09-04.json', 'controlled-recrawl-2026-09-04.json']) {
     const p = path.join(DATA, f);
     if (fs.existsSync(p)) fs.copyFileSync(p, path.join(OUT, f));
   }
@@ -575,6 +578,7 @@ For anything you would rather not discuss in public, my contact details are on m
 
   // ------------------------------------------------- robots, sitemap, 404
   fs.copyFileSync(path.join(__dirname, '_headers'), path.join(OUT, '_headers'));
+  fs.copyFileSync(path.join(__dirname, '_redirects'), path.join(OUT, '_redirects'));
   fs.writeFileSync(path.join(OUT, 'robots.txt'),
     `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml\n`);
 
