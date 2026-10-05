@@ -171,7 +171,7 @@ function page(title, body, opts = {}) {
 <img src="/logo.svg" width="26" height="26" alt="">
 <b style="font-weight:500">mcp-pin</b><span class="sp"></span>
 <a href="/">Log</a><a href="${REPO}#quick-start">Install</a>
-<a href="/about.html">About</a>
+<a href="/spot/">Play</a><a href="/about.html">About</a>
 <a href="${REPO}/blob/main/docs/VERIFYING.md">Verify</a><a href="${REPO}">GitHub</a>
 </nav></div>
 ${body}
@@ -245,6 +245,12 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
   fs.copyFileSync(path.join(__dirname, 'logo.svg'), path.join(OUT, 'logo.svg'));
   const og = path.join(__dirname, 'og.png');
   if (fs.existsSync(og)) fs.copyFileSync(og, path.join(OUT, 'og.png'));
+  // Spot the rug pull: a static, self-contained page with its own share image.
+  fs.mkdirSync(path.join(OUT, 'spot'), { recursive: true });
+  for (const f of ['index.html', 'og.png']) {
+    const p = path.join(__dirname, 'spot', f);
+    if (fs.existsSync(p)) fs.copyFileSync(p, path.join(OUT, 'spot', f));
+  }
   for (const f of ['log.ndjson', 'head.json', 'pagination-recrawl.json', 'incomplete-crawl-2026-09-04.json', 'env-conditioned-listings-2026-09-04.json', 'controlled-recrawl-2026-09-04.json']) {
     const p = path.join(DATA, f);
     if (fs.existsSync(p)) fs.copyFileSync(p, path.join(OUT, f));
@@ -289,6 +295,7 @@ const dots = '<div class="bar"><i style="background:#ff5f56"></i><i style="backg
   <p style="margin-top:20px">
     <a class="cta" href="${REPO}#protect-one-mcp-server-in-60-seconds">Protect one MCP server</a>
     ${newest ? `<a style="margin-left:18px" href="/servers/${newest.id}.html">See a real change &rarr;</a>` : ''}
+    <a style="margin-left:18px" href="/spot/">Can you spot a rug pull in 8 seconds? &rarr;</a>
   </p>
 </div></div>
 
@@ -571,7 +578,7 @@ For anything you would rather not discuss in public, my contact details are on m
   fs.writeFileSync(path.join(OUT, 'robots.txt'),
     `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml\n`);
 
-  const urls = ['/', '/about.html'].concat(servers.map((s) => `/servers/${s.id}.html`));
+  const urls = ['/', '/spot/', '/about.html'].concat(servers.map((s) => `/servers/${s.id}.html`));
   fs.writeFileSync(path.join(OUT, 'sitemap.xml'),
     '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
     urls.map((u) => `  <url><loc>${SITE}${u}</loc><lastmod>${new Date().toISOString().slice(0, 10)}</lastmod></url>`).join('\n') +
