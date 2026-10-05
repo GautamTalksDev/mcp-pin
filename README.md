@@ -245,6 +245,8 @@ The whole tool object. Name, description, input schema, and annotations, canonic
 
 The rule is simple. **If the model can read it, it is in scope.** Key order does not matter, tool order does not matter, whitespace does not matter. A single character of a description does.
 
+The exact recipe is an open spec, [the tool definition hash](docs/TOOL_DEFINITION_HASH.md), with [test vectors](docs/tool-definition-hash-vectors.json) and a second, independent implementation in Python, so a registry, a gateway or another client can compute the same hashes and check each other's.
+
 ---
 
 ## For teams: commit an mcp-pin.lock

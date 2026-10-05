@@ -58,6 +58,45 @@ t('annotations are in scope', () => {
   assert.notStrictEqual(a.setHash, b.setHash);
 });
 
+process.stdout.write('tool definition hash vectors\n');
+{
+  // docs/TOOL_DEFINITION_HASH.md; docs/tool_definition_hash.py checks the same file in Python.
+  const v = JSON.parse(fs.readFileSync(path.join(ROOT, 'docs/tool-definition-hash-vectors.json'), 'utf8'));
+  const { repeatsMemberName } = require(path.join(ROOT, 'src/canonical'));
+  const pages = (list) => [].concat(...list.map((p) => JSON.parse(p)));
+  t('every definition vector: canonical form and hash', () => {
+    for (const d of v.definitions) {
+      const c = canonicalize(JSON.parse(d.input));
+      assert.strictEqual(c, d.canonical, d.about);
+      assert.strictEqual(sha256(c), d.hash, d.about);
+    }
+  });
+  t('the RFC 8785 examples come out as the RFC publishes them', () => {
+    const rfc = v.definitions.filter((d) => /^RFC 8785/.test(d.about));
+    const sorted = rfc.find((d) => /3\.2\.3/.test(d.about)).canonical;
+    assert.deepStrictEqual([...sorted.matchAll(/":"([^"]+)"/g)].map((m) => m[1]),
+      ['Carriage Return', 'One', 'Control', 'Latin Small Letter O With Diaeresis', 'Euro Sign', 'Emoji: Grinning Face', 'Hebrew Letter Dalet With Dagesh']);
+    assert.strictEqual(rfc.find((d) => /3\.2\.2/.test(d.about)).canonical,
+      '{"literals":[null,true,false],"numbers":[333333333.3333333,1e+30,4.5,0.002,1e-27],"string":"€$\\u000f\\nA\'B\\"\\\\\\\\\\"/"}');
+  });
+  t('every set vector: sorted lines and set hash, however the pages split', () => {
+    for (const s of v.sets) {
+      const fp = fingerprintToolset(pages(s.pages));
+      assert.deepStrictEqual(fp.tools.map((x) => x.name + ':' + x.hash), s.lines, s.about);
+      assert.strictEqual(fp.setHash, s.setHash, s.about);
+    }
+  });
+  t('every instructions vector', () => {
+    for (const i of v.instructions) assert.strictEqual(i.instructions === null ? null : sha256(i.instructions), i.hash, i.about);
+  });
+  t('every invalid vector is refused', () => {
+    for (const x of v.invalid) {
+      if (x.input) assert.ok(repeatsMemberName(x.input), x.about);
+      else assert.throws(() => fingerprintToolset(pages(x.pages)), /no string name/, x.about);
+    }
+  });
+}
+
 process.stdout.write('public log\n');
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-test-'));
 const log = new PublicLog(dir);

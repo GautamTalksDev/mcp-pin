@@ -1,0 +1,150 @@
+{
+  "about": "Test vectors for the tool definition hash, version 1 (docs/TOOL_DEFINITION_HASH.md). Inputs are JSON text: parse them yourself. Hashes are SHA-256, lowercase hex.",
+  "definitions": [
+    {
+      "about": "A tool, with whitespace and its members out of order",
+      "input": "{\n  \"inputSchema\": { \"type\": \"object\", \"properties\": { \"city\": { \"type\": \"string\" } }, \"required\": [\"city\"] },\n  \"name\": \"weather\",\n  \"description\": \"Get the current weather for a city.\"\n}",
+      "canonical": "{\"description\":\"Get the current weather for a city.\",\"inputSchema\":{\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"],\"type\":\"object\"},\"name\":\"weather\"}",
+      "hash": "f6d1913a45f2a5ea95ceb161b4e08eed245a1808044f3a358705d2641b6fb37d"
+    },
+    {
+      "about": "Members this document does not name are kept: title, icons, outputSchema, annotations, _meta",
+      "input": "{\"name\":\"search\",\"title\":\"Search\",\"description\":\"Search the docs.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"q\":{\"type\":\"string\"}}},\"outputSchema\":{\"type\":\"object\"},\"annotations\":{\"readOnlyHint\":true,\"openWorldHint\":false},\"icons\":[{\"src\":\"https://example.com/i.png\",\"mimeType\":\"image/png\"}],\"_meta\":{\"com.example/x\":1}}",
+      "canonical": "{\"_meta\":{\"com.example/x\":1},\"annotations\":{\"openWorldHint\":false,\"readOnlyHint\":true},\"description\":\"Search the docs.\",\"icons\":[{\"mimeType\":\"image/png\",\"src\":\"https://example.com/i.png\"}],\"inputSchema\":{\"properties\":{\"q\":{\"type\":\"string\"}},\"type\":\"object\"},\"name\":\"search\",\"outputSchema\":{\"type\":\"object\"},\"title\":\"Search\"}",
+      "hash": "f7948f962adc11825733e67918e78f304d183b1271ba7ab2647857ac2369ba2e"
+    },
+    {
+      "about": "RFC 8785 section 3.2.3: member names sort by UTF-16 code units, so the emoji (D83D) sorts before U+FB33",
+      "input": "{\n  \"\\u20ac\": \"Euro Sign\",\n  \"\\r\": \"Carriage Return\",\n  \"\\ufb33\": \"Hebrew Letter Dalet With Dagesh\",\n  \"1\": \"One\",\n  \"\\ud83d\\ude00\": \"Emoji: Grinning Face\",\n  \"\\u0080\": \"Control\",\n  \"\\u00f6\": \"Latin Small Letter O With Diaeresis\"\n}",
+      "canonical": "{\"\\r\":\"Carriage Return\",\"1\":\"One\",\"\":\"Control\",\"ö\":\"Latin Small Letter O With Diaeresis\",\"€\":\"Euro Sign\",\"😀\":\"Emoji: Grinning Face\",\"דּ\":\"Hebrew Letter Dalet With Dagesh\"}",
+      "hash": "5e321556d22018a9656991a9e94f77ec175fa193e52a2429d312f8419ec8b08c"
+    },
+    {
+      "about": "RFC 8785 section 3.2.2: numbers as ECMAScript writes them, and string escapes",
+      "input": "{\n  \"numbers\": [333333333.33333329, 1E30, 4.50,\n              2e-3, 0.000000000000000000000000001],\n  \"string\": \"\\u20ac$\\u000F\\u000aA'\\u0042\\u0022\\u005c\\\\\\\"\\/\",\n  \"literals\": [null, true, false]\n}",
+      "canonical": "{\"literals\":[null,true,false],\"numbers\":[333333333.3333333,1e+30,4.5,0.002,1e-27],\"string\":\"€$\\u000f\\nA'B\\\"\\\\\\\\\\\"/\"}",
+      "hash": "2d5e01a318d0f0879ab568c4be289c8b1f64ef8921a53c6277d5e069978baacb"
+    },
+    {
+      "about": "Numbers in a schema: 1.0 is 1, 1E3 is 1000, -0 is 0, 1e-7 keeps its exponent",
+      "input": "{\"name\":\"n\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"k\":{\"type\":\"number\",\"minimum\":1.0,\"maximum\":1E3,\"multipleOf\":0.000001,\"default\":-0,\"exclusiveMinimum\":1e-7}}}}",
+      "canonical": "{\"inputSchema\":{\"properties\":{\"k\":{\"default\":0,\"exclusiveMinimum\":1e-7,\"maximum\":1000,\"minimum\":1,\"multipleOf\":0.000001,\"type\":\"number\"}},\"type\":\"object\"},\"name\":\"n\"}",
+      "hash": "913c935b054edcf4398e3e5de60422a1f057f7970ff214a25bc48eb67a6d810f"
+    },
+    {
+      "about": "An integer past 2^53 is read as the nearest double, as RFC 8785 requires",
+      "input": "{\"name\":\"big\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\",\"maximum\":12345678901234567890}}}}",
+      "canonical": "{\"inputSchema\":{\"properties\":{\"id\":{\"maximum\":12345678901234567000,\"type\":\"integer\"}},\"type\":\"object\"},\"name\":\"big\"}",
+      "hash": "6c77e7c22b65775684e716148e5f5364ffedfbb7333741f0cc0650da9ecc2167"
+    },
+    {
+      "about": "Control characters are escaped (ESC as \\u001b); U+2028, \"/\" and non-ASCII are written as themselves",
+      "input": "{\"name\":\"esc\",\"description\":\"Line one\\nTab\\there \\u001b[2J and \\u2028 then \\/ and \\ud83d\\ude00 caf\\u00e9\"}",
+      "canonical": "{\"description\":\"Line one\\nTab\\there \\u001b[2J and   then / and 😀 café\",\"name\":\"esc\"}",
+      "hash": "f1960a7b888f4e220e0085c0edf1611809caec6db62ad93be713cdd43d4df200"
+    },
+    {
+      "about": "An unpaired surrogate (outside I-JSON) is written as a lowercase \\u escape, as JSON.stringify does",
+      "input": "{\"name\":\"odd\",\"description\":\"x\\uDEADy\"}",
+      "canonical": "{\"description\":\"x\\udeady\",\"name\":\"odd\"}",
+      "hash": "6211d555f8b4f4436e8b449e341f7c161a47ada0d21e6621e1ec6bd8e51f8634"
+    }
+  ],
+  "sets": [
+    {
+      "about": "Two tools: sorted by name before hashing, whatever order the server sends",
+      "pages": [
+        "[{\"name\":\"weather\",\"description\":\"Get the current weather for a city.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}},{\"name\":\"alerts\",\"description\":\"Weather alerts for a state.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"state\":{\"type\":\"string\"}}}}]"
+      ],
+      "lines": [
+        "alerts:d5c24fc1d6b0b6f4364bb161840a535e38c8c1d90aaff5f7e3e99c993d7fc5c0",
+        "weather:f6d1913a45f2a5ea95ceb161b4e08eed245a1808044f3a358705d2641b6fb37d"
+      ],
+      "setHash": "dbc6a9bbec4bcc2a77ce357dc0d96d15a053da10ddefc0b4bdc1a48507df7521"
+    },
+    {
+      "about": "The same two tools over two pages, in the other order: the same set hash",
+      "pages": [
+        "[{\"name\":\"alerts\",\"description\":\"Weather alerts for a state.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"state\":{\"type\":\"string\"}}}}]",
+        "[{\"name\":\"weather\",\"description\":\"Get the current weather for a city.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}}]"
+      ],
+      "lines": [
+        "alerts:d5c24fc1d6b0b6f4364bb161840a535e38c8c1d90aaff5f7e3e99c993d7fc5c0",
+        "weather:f6d1913a45f2a5ea95ceb161b4e08eed245a1808044f3a358705d2641b6fb37d"
+      ],
+      "setHash": "dbc6a9bbec4bcc2a77ce357dc0d96d15a053da10ddefc0b4bdc1a48507df7521"
+    },
+    {
+      "about": "An empty listing hashes the empty string",
+      "pages": [
+        "[]"
+      ],
+      "lines": [],
+      "setHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "about": "Two definitions that share a name are ordered by their hashes",
+      "pages": [
+        "[{\"name\":\"dup\",\"description\":\"b\"},{\"name\":\"dup\",\"description\":\"a\"}]"
+      ],
+      "lines": [
+        "dup:2eddc6b62f4f9a7ed78070e4dbb2289cec5bec57dbaa87d44a3a36ae2fc57014",
+        "dup:b29fe56abb672c5329735553cbd1fc543ef75a3a2fa401352d17bb3d2f68d1ce"
+      ],
+      "setHash": "46c3adb41d72d87a89a0365e361324499dddc4f352feee3083c173602063a23b"
+    },
+    {
+      "about": "A prompts/list listing uses the same construction",
+      "pages": [
+        "[{\"name\":\"forecast\",\"description\":\"Ask for a forecast.\",\"arguments\":[{\"name\":\"city\",\"required\":true}]}]"
+      ],
+      "lines": [
+        "forecast:ee0adede61653c724c5cd5aa105c652e72d6485e4c8c7a5ad501ccf4482fdcba"
+      ],
+      "setHash": "771716d5e841d853ebb9fb3f8d18bf6a5e8e8470f151a2b0ec0848955f53a92a"
+    }
+  ],
+  "instructions": [
+    {
+      "about": "Instructions are hashed as UTF-8 bytes, with no canonicalization",
+      "instructions": "Use the weather tool for forecasts.",
+      "hash": "59b91e0aff7e5e13f5c7eb890497066a703efae55ff61eee2151081704b8ff64"
+    },
+    {
+      "about": "Non-ASCII and a line break",
+      "instructions": "Prévisions météo ☀\nUse the tool.",
+      "hash": "bf762870f070b82a778d486b45b868640990266fed5decd5af715722381acf42"
+    },
+    {
+      "about": "No instructions: no hash",
+      "instructions": null,
+      "hash": null
+    }
+  ],
+  "invalid": [
+    {
+      "about": "A repeated member name has no canonical form; parsers disagree about which copy wins",
+      "input": "{\"name\":\"x\",\"description\":\"a\",\"description\":\"b\"}",
+      "reason": "repeated member name"
+    },
+    {
+      "about": "A repeated member name anywhere, here inside the schema",
+      "input": "{\"name\":\"x\",\"inputSchema\":{\"type\":\"object\",\"type\":\"string\"}}",
+      "reason": "repeated member name"
+    },
+    {
+      "about": "A listing with a definition that has no name has no set hash",
+      "pages": [
+        "[{\"description\":\"no name\"}]"
+      ],
+      "reason": "no string name"
+    },
+    {
+      "about": "A listing with a definition whose name is not a string has no set hash",
+      "pages": [
+        "[{\"name\":7}]"
+      ],
+      "reason": "no string name"
+    }
+  ]
+}
