@@ -26,7 +26,8 @@ function usage(code) {
       `  mcp-pin show <id>                       pinned tool fingerprints\n` +
       `  mcp-pin approve <id>                    accept the last observed drift\n` +
       `  mcp-pin forget <id>                     drop a pin (re-pins on next run)\n` +
-      `  mcp-pin verify                          verify the local log chain\n\n` +
+      `  mcp-pin verify                          verify the local log chain\n` +
+      `  mcp-pin demo                            watch a changed tool get blocked (10 s)\n\n` +
       `  --name <label>   friendly name for this server\n` +
       `  --yes            auto-approve first pin only (never approves drift)\n`
   );
@@ -71,6 +72,12 @@ try {
   else if (sub === 'forget') cmdForget(argv[1]);
   else if (sub === 'verify') cmdVerify();
   else if (sub === 'verify-log') cmdVerifyLog(argv[1]);
+  else if (sub === 'demo') {
+    require('../src/demo').run().then(
+      (code) => process.exit(code),
+      (e) => { process.stderr.write('mcp-pin demo: ' + e.message + '\n'); process.exit(1); }
+    );
+  }
   else runProxy();
 } catch (e) {
   failCorrupt(e);

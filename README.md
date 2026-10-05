@@ -12,7 +12,9 @@
 
 *A local proxy that blocks tool drift, and a public log that remembers every version.*
 
-[What happens](#what-actually-happens) · [Quick start](#quick-start) · [The public log](#the-public-log) · [Verify it yourself](#verify-it-yourself) · [Security](SECURITY.md) · [Threat model](docs/THREAT_MODEL.md)
+[What happens](#what-actually-happens) · [See it in 10 seconds](#see-it-in-10-seconds) · [Quick start](#quick-start) · [The public log](#the-public-log) · [Verify it yourself](#verify-it-yourself) · [Security](SECURITY.md) · [Threat model](docs/THREAT_MODEL.md)
+
+**Watch:** [The AI Tool You Approved Is Not the One Running Now](https://www.youtube.com/watch?v=tGtbDNr9qvE) (7 min), including the two bugs I shipped while building this.
 
 </div>
 
@@ -81,6 +83,14 @@ flowchart LR
 
 The tool never asks a model whether a change looks dangerous. It computes a hash and compares it. That is the whole design, and it is deliberate. A deterministic check keeps working when a model has a bad day, and it keeps working on the subtle changes a model would wave through.
 
+## See it in 10 seconds
+
+```bash
+npx --yes mcp-pin@0.1.4 demo
+```
+
+A harmless bundled server changes its one tool between two sessions: the description starts asking for notes from the conversation, and the schema grows a field to carry them. The first session pins it. The second is blocked, with the diff. It runs in a temporary folder that is deleted afterwards, never touches your real pins, never calls a tool, and makes no network calls.
+
 ---
 
 ## Kill test
@@ -100,7 +110,7 @@ It lives in the README so it cannot be quietly renegotiated later.
 Pick the server with the most access. Filesystem, GitHub, SSH, Kubernetes, a database, anything cloud. Put `mcp-pin` in front of it.
 
 ```bash
-npx --yes mcp-pin@0.1.2 -- <your mcp server command>
+npx --yes mcp-pin@0.1.4 -- <your mcp server command>
 ```
 
 Add it in front of a server in your client config:
@@ -119,7 +129,7 @@ Add it in front of a server in your client config:
 First run pins. Every run after that verifies.
 
 ```
-$ npx --yes mcp-pin@0.1.2 -- node weather-server.js
+$ npx --yes mcp-pin@0.1.4 -- node weather-server.js
 mcp-pin: pinned 1 tool(s) for node [1 arg] (40c179188ad9)
 ```
 
@@ -168,7 +178,7 @@ Dated, because this changes. Last verified **3 September 2026**.
 | stdio transport | Supported. This is the only transport the proxy speaks. |
 | HTTP and SSE transport | **Not supported by the proxy.** The public log crawls them; the proxy cannot yet sit in front of them. |
 | Claude Desktop | Tested, 2 Sep 2026 |
-| Cursor, Cline, Codex, OpenCode | Not yet verified by me. They speak stdio, so it should work; if you try one, tell me what happened and I will put the result in this table. |
+| Cursor, Cline, Codex, OpenCode | Not yet verified by me. They speak stdio, so it should work; if you try one, [open an issue](https://github.com/GautamTalksDev/mcp-pin/issues/new?title=Client%20report%3A%20) with your client, its version and what happened, and I will put the result in this table with your name on it. |
 | Node | 20 or newer |
 
 I would rather this table be short and true than long and optimistic.
@@ -183,7 +193,7 @@ The rule is simple. **If the model can read it, it is in scope.** Key order does
 
 ## Catch it in your own CI
 
-> **Experimental.** The GitHub Action is not part of the 0.1.2 release. Its bootstrap instructions currently reference a package that is not on npm, and the baseline does not survive the runner. Use the local proxy. Do not adopt the action in CI yet.
+> **Experimental.** The GitHub Action is not part of the npm releases. Its bootstrap instructions currently reference a package that is not on npm, and the baseline does not survive the runner. Use the local proxy. Do not adopt the action in CI yet.
 
 If you maintain an MCP server, the useful place to notice a definition change is the pull request that makes it.
 
@@ -233,7 +243,7 @@ Server authors can show their users that their definitions are stable and being 
 [![mcp-pin](https://mcp-pin.gautamkhosla.com/badge/<id>.svg)](https://mcp-pin.gautamkhosla.com/servers/<id>.html)
 ```
 
-The badge only ever states a fact about time. It says `unchanged 91d` or `changed today`. It never says "safe", because this project cannot know that and will not imply it.
+The badge only ever states a fact about time. It says `unchanged 91d` or `changed today`. If the crawler has not had a good look in more than three days it says `last checked 4 Sep` instead of a number that kept growing while nobody looked, and a change first seen after a gap reads `changed since 4 Sep`, because the day it happened is unknown. It never says "safe", because this project cannot know that and will not imply it.
 
 ---
 
@@ -245,7 +255,7 @@ The point of a transparency log is that you do not have to trust the people runn
 curl -O https://mcp-pin.gautamkhosla.com/log.ndjson
 curl -O https://mcp-pin.gautamkhosla.com/head.json
 curl -O https://mcp-pin.gautamkhosla.com/PUBLIC_KEY.txt
-npx --yes mcp-pin@0.1.2 verify-log .
+npx --yes mcp-pin@0.1.4 verify-log .
 ```
 
 ```
@@ -266,13 +276,19 @@ mcp-pin answers a different question. A lockfile tells you that your own server 
 
 One is a lockfile for what you ship. The other is a history for what you install.
 
+### And from Snyk Agent Scan
+
+[Snyk Agent Scan](https://github.com/snyk/agent-scan) (formerly Invariant's mcp-scan) discovers the MCP servers and skills on your machine and scans them for prompt injections and other threats hidden in natural language. If you want something to judge what a description says, use a scanner like that.
+
+mcp-pin is narrower on purpose. It sits inline as a stdio proxy, holds your client's traffic until the toolset matches the pin, and decides with a hash comparison rather than a model. It does not judge content at all. It tells you that what you approved stopped being what is running, and it keeps the public record of when that happened across every server it can reach.
+
 ## What this does not protect against
 
 mcp-pin detects when a server's tool definitions change between sessions, including changes the server did not announce. That is the claim the evidence supports.
 
 It does **not** protect you from a malicious program running as the same user. That program can delete `~/.mcp-pin` and re-pin itself. That is an architectural limit of a local pin store, not a bug, and it will not be "fixed" by writing the same files harder. Day-one malice that never changes is also invisible. A pin is not a safety rating.
 
-Versions ≤0.1.0 silently truncated paginated servers and silently lost concurrent pin writes while reporting success. Use 0.1.2.
+Versions ≤0.1.0 silently truncated paginated servers and silently lost concurrent pin writes while reporting success. Use 0.1.2 or later.
 
 ## Honest limitations
 

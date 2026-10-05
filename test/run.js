@@ -165,6 +165,22 @@ t('pins on first connect, blocks on drift', () => {
   assert.ok(/TOOL DEFINITIONS CHANGED/.test(r2.stderr), 'expected block on second run');
   assert.ok(!/CLIENT SAW/.test(r2.stdout), 'poisoned toolset must never reach the client');
 });
+t('demo pins, then blocks the changed tool, and leaves real pins alone', () => {
+  const real = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-real-'));
+  const env = Object.assign({}, process.env, { MCP_PIN_HOME: real, ATTEST_HOME: real, NO_COLOR: '1' });
+  const r = spawnSync(process.execPath, [ATTEST, 'demo'], { env, encoding: 'utf8', timeout: 60000 });
+  const out = r.stdout + r.stderr;
+  assert.strictEqual(r.status, 0, out);
+  assert.match(out, /pinned 1 tool/);
+  assert.match(out, /TOOL DEFINITIONS CHANGED SINCE YOU APPROVED THIS SERVER/);
+  assert.match(out, /context/);
+  assert.deepStrictEqual(fs.readdirSync(real), [], 'the demo must not touch the real pin store');
+});
+t('only the harmless demo server ships in the package', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  assert.ok(pkg.files.includes('demo/drift-server.js'));
+  assert.ok(!pkg.files.includes('demo') && !pkg.files.includes('demo/rugpull-server.js'));
+});
 t('pins both pages of a paginated tools/list', () => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-page-'));
   const env = Object.assign({}, process.env, { MCP_PIN_HOME: home, PAGED: '1' });
