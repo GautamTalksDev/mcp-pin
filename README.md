@@ -270,6 +270,18 @@ In CI, `mcp-pin lock --check` starts each server, compares it with the lock, pri
 
 `${VAR}`, `${VAR:-default}` and `${env:VAR}` in the config are filled in from the environment, the way clients do. A server that needs a credential just to list its tools needs it in CI as well.
 
+### The package behind the definitions
+
+Definitions can stay the same while the code behind them changes. In September 2025, version 1.0.16 of the npm package `postmark-mcp` added one line that blind-copied every email it sent to an outside address ([The Hacker News](https://thehackernews.com/2025/09/first-malicious-mcp-server-found.html), [Snyk](https://snyk.io/blog/malicious-mcp-server-on-npm-postmark-mcp-harvests-emails/)). Anyone who ran it as `npx -y postmark-mcp` got the new code on their next start.
+
+So the lock also records the package each server runs: the exact npm or PyPI version and the registry's digest of it (npm's `integrity`, PyPI's file hashes), or the image digest of a `docker run image@sha256:...` command.
+
+- **The proxy runs the locked version**, even when the config asks for the newest: `npx -y some-server` runs `some-server@<locked version>`, so new code waits for a reviewed lock update. A config that names another version or package does not start.
+- **`mcp-pin lock --check` checks the version that runs.** It fails if the registry now serves different contents for it, and only notes that a newer version is out, so CI does not go red every time a server publishes.
+- **`mcp-pin lock` updates.** It resolves the newest version, probes exactly that version and records it, so the pull request shows the version change and any definition change together.
+
+A published npm version or PyPI file cannot be replaced, so the version carries most of the weight. The digest catches a registry or mirror that serves something else, and a new file added to an old PyPI release. Understood: `npx`, `npm exec`, `pnpm dlx`, `yarn dlx`, `bunx`, `uvx` and `pipx run --spec`. A version range (`^1.2.0`) cannot be held, so `lock` asks for an exact version or a tag. Docker images are held only when the config pins a digest, and `mcp-pin wrap` points out every server whose package is not pinned. A package the registry will not show without credentials can be locked with `--definitions-only`.
+
 ---
 
 ## Catch it in your own CI
@@ -384,6 +396,7 @@ Listed here rather than buried, because a security tool that oversells itself is
 | **Day one malice is invisible** | This detects *change*. A server that ships hostile definitions on the very first connect and never changes them looks perfectly stable. |
 | **Not a prompt injection defence** | It does not inspect content or judge intent. It reports that bytes differ. |
 | **Prompt bodies and tool results** | Definitions are pinned: tools, prompts, and the server's instructions. The text a prompt returns when it is used (`prompts/get`) and what a tool call returns are produced per request and are not pinned. |
+| **New code behind the same definitions** | Without a team lock, mcp-pin checks definitions only, so a server started with `npx -y some-server` can run new code under unchanged tools. Pin a version in your config (`some-server@1.2.3`) or use [a lock](#the-package-behind-the-definitions), which holds the package version too. |
 | **Models sometimes catch this already** | Testing on 2 September 2026 showed Claude Desktop refusing obvious injected instructions in tool descriptions and warning the user unprompted. That defence depends on the payload being obvious. A deterministic check does not. |
 
 ---

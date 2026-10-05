@@ -17,6 +17,7 @@ const { observe } = require('./definitions');
 const { spawnServer } = require('./spawn');
 const store = require('./store');
 const { isStdio, unwrapEntry } = require('./wrap');
+const { packageOf, pinnedArgs } = require('./package');
 
 const VERSION = require('../package.json').version;
 
@@ -96,18 +97,59 @@ function serversFrom(configFile) {
     const args = Array.isArray(plain.args) ? plain.args : [];
     const env = {};
     for (const [k, v] of Object.entries(plain.env || {})) env[k] = expand(v);
-    out.push({ name, command: expand(plain.command), args: args.map((a) => expand(a)), env, id: store.serverId(plain.command, args) });
+    const command = expand(plain.command);
+    const run = args.map((a) => expand(a));
+    out.push({ name, command, args: run, env, id: store.serverId(plain.command, args), pkg: packageOf(command, run) });
   }
   return out;
 }
 
-function toEntry(server, obs) {
+function toEntry(server, obs, pkg) {
   const defs = (list) => list.map((t) => ({ name: t.name, hash: t.hash, definition: JSON.parse(t.canonical) }));
-  const e = { id: server.id, setHash: obs.setHash, tools: defs(obs.tools) };
+  const e = { id: server.id };
+  if (pkg) e.package = pkg;
+  Object.assign(e, { setHash: obs.setHash, tools: defs(obs.tools) });
   if (obs.prompts) { e.promptsHash = obs.promptsHash; e.prompts = defs(obs.prompts); }
   e.instructionsHash = obs.instructionsHash;
   e.instructions = obs.instructions;
   return e;
+}
+
+// What the lock records about a package: the exact version and the
+// registry's digest of it (npm integrity, PyPI file hashes), or an image
+// digest when the command pins one.
+function packageRecord(pkg, resolved) {
+  const rec = { ecosystem: pkg.ecosystem, name: pkg.name, requested: pkg.requested || '' };
+  if (pkg.ecosystem === 'oci') { rec.version = pkg.version; return rec; }
+  rec.version = resolved.version;
+  if (resolved.integrity) rec.integrity = resolved.integrity;
+  if (resolved.files) rec.files = resolved.files;
+  return rec;
+}
+
+function sameContents(a, b) {
+  return (a.integrity || null) === (b.integrity || null) && JSON.stringify(a.files || null) === JSON.stringify(b.files || null);
+}
+
+// The arguments the proxy runs for a locked server. The lock's version runs
+// even when the shared config asks for the newest one, so new code waits
+// for a reviewed lock update. Throws when the config runs a different
+// package, version or image than the lock approved.
+function lockedRun(entry, command, args) {
+  const want = entry && entry.package;
+  if (!want || !want.version) return { args };
+  const have = packageOf(command, args);
+  const update = 'update the lock in a pull request (mcp-pin lock)';
+  if (!have || have.ecosystem !== want.ecosystem || have.name !== want.name) {
+    throw new Error(`this server no longer runs ${want.name}, which mcp-pin.lock approved; ${update}`);
+  }
+  if (have.pinned) {
+    if (have.version !== want.version) throw new Error(`this server runs ${have.name} ${have.version}, but mcp-pin.lock approved ${want.version}; ${update}`);
+    return { args };
+  }
+  const pinned = pinnedArgs(args, have, want.version);
+  if (!pinned) return { args, note: `${have.name} cannot be held at ${want.version} in this form; only its definitions are checked` };
+  return { args: pinned, note: `running ${have.name} ${want.version}, the version in the lock` };
 }
 
 // A lock entry in the shape the proxy and the diff code use for a pin,
@@ -154,4 +196,4 @@ function writeLock(file, servers) {
   fs.renameSync(tmp, file);
 }
 
-module.exports = { probeDefinitions, expand, serversFrom, toEntry, asPin, readLock, findEntry, writeLock };
+module.exports = { packageRecord, sameContents, lockedRun, probeDefinitions, expand, serversFrom, toEntry, asPin, readLock, findEntry, writeLock };

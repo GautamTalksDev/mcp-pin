@@ -39,6 +39,7 @@ function usage(code) {
       `  --yes            auto-approve first pin only (never approves drift)\n` +
       `  --lock <file>    pin against a team lockfile instead of this machine's pin\n\n` +
       `  lock:           --config <file> (default .mcp.json)   --out <file> (default mcp-pin.lock)\n` +
+      `                  --definitions-only  skip package versions (for packages the registry will not show)\n` +
       `  wrap / unwrap:  --yes apply without asking   --dry-run show only\n` +
       `                  --config <file> another config   --project also ./.mcp.json\n` +
       `                  --lock <file> with --project: every teammate's proxy checks the lock\n`
@@ -176,11 +177,12 @@ function runProxy() {
   // tampered locks fail closed.
   const lockFlag = flags.indexOf('--lock') !== -1 ? flags[flags.indexOf('--lock') + 1] : null;
   let lockPin = null;
+  let lockEntry = null;
   if (lockFlag) {
     const lf = require('../src/lockfile');
     try {
-      const entry = lf.findEntry(lf.readLock(path.resolve(lockFlag)), nameFlag, id);
-      if (entry) lockPin = lf.asPin(entry);
+      lockEntry = lf.findEntry(lf.readLock(path.resolve(lockFlag)), nameFlag, id);
+      if (lockEntry) lockPin = lf.asPin(lockEntry);
       else process.stderr.write(C.dim(`mcp-pin: ${label} is not in ${lockFlag}; using this machine's pin\n`));
     } catch (e) {
       process.stderr.write('mcp-pin: cannot use the lockfile ' + path.resolve(lockFlag) + ': ' + e.message + '\n' +
@@ -189,7 +191,20 @@ function runProxy() {
     }
   }
 
-  const child = spawnServer(command, args, { stdio: ['pipe', 'pipe', 'inherit'] });
+  // The package the lock approved runs, not whatever is newest today.
+  let runArgs = args;
+  if (lockEntry) {
+    try {
+      const run = require('../src/lockfile').lockedRun(lockEntry, command, args);
+      runArgs = run.args;
+      if (run.note) process.stderr.write(C.dim('mcp-pin: ' + run.note + '\n'));
+    } catch (e) {
+      process.stderr.write(`mcp-pin: not starting ${label}: ${e.message}\n`);
+      process.exit(1);
+    }
+  }
+
+  const child = spawnServer(command, runArgs, { stdio: ['pipe', 'pipe', 'inherit'] });
   child.on('error', (e) => {
     process.stderr.write(`mcp-pin: cannot start server: ${e.message}\n`);
     process.exit(127);
@@ -778,6 +793,7 @@ function cmdWrap(mode) {
     for (const ch of r.changes) {
       const where = ch.where.startsWith('project ') ? `  (${ch.where})` : '';
       say(`  ${mode === 'wrap' ? '+ protect  ' : '- unprotect'}  ${ch.name}${where}`);
+      if (mode === 'wrap' && ch.pkg && !ch.pkg.pinned) say('               ' + require('../src/package').describe(ch.pkg));
     }
     for (const s of r.skipped) say(`    ${s.name}: ${s.reason}`);
     if (r.changes.length) work.push({ c, r });
@@ -835,25 +851,75 @@ async function cmdLock() {
   if (check && !lock) throw new Error('no lockfile at ' + out + '; write one with: mcp-pin lock');
   if (!servers.length) { say('No local (stdio) MCP servers in ' + config + '.'); return; }
 
+  const pk = require('../src/package');
+  const packages = !opts.includes('--definitions-only');
   const next = {};
   let changed = 0;
   let failed = 0;
+  let held = 0;
   for (const s of servers) {
+    const prev = lock && lock.servers[s.name];
+    const was = prev && prev.package;
+    const notes = [];
+
+    // The package first: the exact version to probe and record. When the
+    // config asks for the newest, the lock holds the project at the version
+    // it reviewed; lock --check probes that version, which is what runs.
+    let pkgRec = null;
+    let probeArgs = s.args;
+    const pkg = packages ? s.pkg : null;
+    if (pkg && pkg.ecosystem === 'oci') {
+      pkgRec = lf.packageRecord(pkg);
+      if (!pkg.pinned) notes.push(`image ${pkg.name} is not pinned by digest, so it can change on any start`);
+    } else if (pkg) {
+      const hold = check && was && was.version && !pkg.pinned ? pk.pinnedArgs(s.args, pkg, was.version) : null;
+      let now;      // the newest version the spec resolves to
+      let runs;     // the registry's view of the version that actually runs
+      try {
+        now = await pk.resolve(pkg);
+        runs = hold && was.version !== now.version ? await pk.resolve(Object.assign({}, pkg, { version: was.version, pinned: true })) : now;
+      } catch (e) {
+        failed++;
+        say(`${s.name}: could not check its package ${pkg.name} (${visible(e.message)})`);
+        if (prev) next[s.name] = prev;
+        continue;
+      }
+      if (prev && !was && check) {
+        changed++;
+        notes.push(`its package is not recorded in the lock yet; run mcp-pin lock`);
+      }
+      if (was && was.version === runs.version && !lf.sameContents(was, runs)) {
+        changed++;
+        notes.push(`the registry now serves different contents for ${pkg.name} ${runs.version} than when it was locked`);
+      }
+      if (was && was.version && was.version !== now.version) {
+        if (hold) notes.push(`${pkg.name} ${now.version} is out; this project keeps running ${was.version} until the lock is updated (mcp-pin lock)`);
+        else if (check) { changed++; notes.push(`${pkg.name} moved from ${was.version} to ${now.version}, and this form of command cannot be held back`); }
+        else notes.push(`${pkg.name} ${was.version} to ${now.version}`);
+      }
+      if (hold) { probeArgs = hold; pkgRec = was; }
+      else {
+        probeArgs = pkg.pinned ? s.args : (pk.pinnedArgs(s.args, pkg, now.version) || s.args);
+        pkgRec = lf.packageRecord(pkg, now);
+      }
+      if (!pkg.pinned && pk.pinnedArgs(s.args, pkg, now.version)) held++;
+    }
+
     let obs;
     try {
-      obs = await lf.probeDefinitions(s.command, s.args, s.env);
+      obs = await lf.probeDefinitions(s.command, probeArgs, s.env);
     } catch (e) {
       failed++;
       say(`${s.name}: could not start (${visible(e.message)})`);
-      if (lock && lock.servers[s.name]) next[s.name] = lock.servers[s.name];
+      if (prev) next[s.name] = prev;
       continue;
     }
-    const prev = lock && lock.servers[s.name];
     let prevPin = null;
     try { prevPin = prev ? lf.asPin(prev) : null; } catch (e) { prevPin = e; }
+    const pkgText = pkgRec && pkgRec.version ? `, ${pkgRec.name} ${pkgRec.ecosystem === 'oci' ? pkgRec.version.slice(0, 19) : pkgRec.version}` : '';
     if (!prev) {
       if (check) changed++;
-      say(`${s.name}: ${check ? 'not in the lock' : 'locked'} (${obs.tools.length} tool(s))`);
+      say(`${s.name}: ${check ? 'not in the lock' : 'locked'} (${obs.tools.length} tool(s)${pkgText})`);
     } else if (prevPin instanceof Error) {
       changed++;
       say(`${s.name}: its entry in the lock is not valid: ${prevPin.message}${check ? '' : '. Rewritten from what the server serves now.'}`);
@@ -861,10 +927,11 @@ async function cmdLock() {
       const drift = diffDefinitions(prevPin, obs);
       if (prevPin.id !== s.id) { changed++; say(`${s.name}: its command in ${path.basename(config)} changed since it was locked`); }
       else if (drift.length) { changed++; say(`${s.name}: changed since it was locked`); }
-      else say(`${s.name}: matches the lock`);
+      else say(`${s.name}: matches the lock${pkgText ? ` (${pkgText.slice(2)})` : ''}`);
       if (drift.length) say(renderSummary(drift));
     }
-    next[s.name] = lf.toEntry(s, obs);
+    for (const n of notes) say('  ' + n);
+    next[s.name] = lf.toEntry(s, obs, pkgRec);
   }
   if (lock) {
     for (const name of Object.keys(lock.servers)) {
@@ -884,7 +951,8 @@ async function cmdLock() {
   lf.writeLock(out, next);
   say(`\nwrote ${out}`);
   say('Commit it. A pull request that changes a server now shows exactly what its tools tell the model.');
-  say(`Pin each teammate's proxy to it: add "--lock", "${path.basename(out)}" before "--" in the server's args.`);
+  say(`Pin each teammate's proxy to it: mcp-pin wrap --project --lock ${path.basename(out)}`);
+  if (held) say(`${held} server(s) run the newest version of a package; with the lock they stay at the version recorded here until the lock is updated.`);
   if (failed) process.exit(1);
 }
 

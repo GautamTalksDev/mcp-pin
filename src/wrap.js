@@ -11,6 +11,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { packageOf } = require('./package');
 
 const VERSION = require('../package.json').version;
 const PKG = 'mcp-pin@' + VERSION;
@@ -70,6 +71,12 @@ function unwrapEntry(entry) {
   return Object.assign({}, entry, { command: a[i + 1], args: a.slice(i + 2) });
 }
 
+// The package the server itself runs (inside any mcp-pin wrapper), for the plan.
+function packageIn(entry) {
+  const inner = unwrapEntry(entry) || entry;
+  return packageOf(inner.command, inner.args);
+}
+
 // Decide what to do with one server entry. Returns null when it is not ours to touch.
 function plan(mode, name, entry, extra = []) {
   if (!isStdio(entry)) return { name, skip: 'remote server: the proxy speaks stdio only' };
@@ -120,7 +127,7 @@ function processJson(text, mode, extra = []) {
       if (!p) continue;
       if (p.skip) { skipped.push({ name, where, reason: p.skip }); continue; }
       map[name] = p.next;
-      changes.push({ name, where });
+      changes.push({ name, where, pkg: packageIn(entry) });
     }
   }
   const indent = /^\s*\{\s*\n(\s+)/.exec(text);
@@ -181,7 +188,7 @@ function processToml(text, mode, extra = []) {
     const argsLine = `args = ${JSON.stringify(p.next.args)}`;
     if (t.args) lines[t.args.i] = t.args.indent + argsLine;
     else inserts.push({ after: t.command.i, line: t.command.indent + argsLine });
-    changes.push({ name: t.name, where: 'mcp_servers' });
+    changes.push({ name: t.name, where: 'mcp_servers', pkg: packageIn({ command, args }) });
   }
   for (const ins of inserts.sort((a, b) => b.after - a.after)) lines.splice(ins.after + 1, 0, ins.line);
   return { changes, skipped, text: lines.join(eol) };

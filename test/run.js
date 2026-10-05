@@ -514,7 +514,7 @@ process.stdout.write('wrap and unwrap\n');
   t('wrap reaches Claude Code project scopes and VS Code servers', () => {
     const doc = { mcpServers: {}, projects: { '/repo': { mcpServers: { db: { command: 'uvx', args: ['db-mcp'] } } } } };
     const r = w.processJson(JSON.stringify(doc), 'wrap');
-    assert.deepStrictEqual(r.changes, [{ name: 'db', where: 'project /repo' }]);
+    assert.deepStrictEqual(r.changes.map((c) => ({ name: c.name, where: c.where })), [{ name: 'db', where: 'project /repo' }]);
     const vs = w.processJson(JSON.stringify({ servers: { gh: { type: 'stdio', command: 'gh-mcp' }, web: { type: 'http', url: 'https://x' } } }), 'wrap');
     assert.deepStrictEqual(vs.changes.map((c) => c.name), ['gh']);
   });
@@ -867,6 +867,114 @@ process.stdout.write('team lockfile\n');
     const r = w.processJson(JSON.stringify({ mcpServers: { s: { command: 'npx', args: ['-y', 'mcp-pin@0.1.4', '--name', 's', '--', 'node', 's.js'] } } }), 'wrap', ['--lock', 'mcp-pin.lock']);
     assert.deepStrictEqual(JSON.parse(r.text).mcpServers.s.args, ['-y', 'mcp-pin@0.1.4', '--name', 's', '--lock', 'mcp-pin.lock', '--', 'node', 's.js']);
   });
+}
+
+process.stdout.write('package pinning\n');
+{
+  const pk = require(path.join(ROOT, 'src/package'));
+  const lf = require(path.join(ROOT, 'src/lockfile'));
+  t('the package behind a server command, and whether it is pinned', () => {
+    const p = (c, ...a) => { const r = pk.packageOf(c, a); return r && [r.ecosystem, r.name, r.version, r.pinned]; };
+    assert.deepStrictEqual(p('npx', '-y', '@modelcontextprotocol/server-filesystem', '/tmp'), ['npm', '@modelcontextprotocol/server-filesystem', null, false]);
+    assert.deepStrictEqual(p('npx.cmd', '-y', 'postmark-mcp@1.0.15'), ['npm', 'postmark-mcp', '1.0.15', true]);
+    assert.deepStrictEqual(p('npx', '--yes', '--', 'srv@latest', '--port', '3'), ['npm', 'srv', null, false]);
+    assert.deepStrictEqual(p('npx', '-p', '@s/pkg@2.0.0', 'pkg-bin'), ['npm', '@s/pkg', '2.0.0', true]);
+    assert.deepStrictEqual(p('npm', 'exec', '-y', '--', 'pkg@1.0.0'), ['npm', 'pkg', '1.0.0', true]);
+    assert.deepStrictEqual(p('uvx', 'mcp-server-fetch'), ['pypi', 'mcp-server-fetch', null, false]);
+    assert.deepStrictEqual(p('uvx', '--from', 'mcp-server-git==1.2.0', 'mcp-server-git'), ['pypi', 'mcp-server-git', '1.2.0', true]);
+    assert.deepStrictEqual(p('docker', 'run', '-i', '--rm', '-e', 'TOKEN', 'ghcr.io/github/github-mcp-server'), ['oci', 'ghcr.io/github/github-mcp-server', null, false]);
+    assert.strictEqual(p('npx', '-y', './local/server.js'), null);
+    assert.strictEqual(p('node', 'server.js'), null);
+  });
+  t('an unpinned package is pinned in place, in the syntax its runner takes', () => {
+    const pin = (c, a, v) => pk.pinnedArgs(a, pk.packageOf(c, a), v);
+    assert.deepStrictEqual(pin('npx', ['-y', '@s/pkg', '/tmp'], '1.2.3'), ['-y', '@s/pkg@1.2.3', '/tmp']);
+    assert.deepStrictEqual(pin('npx', ['--package=@s/pkg', 'bin'], '1.2.3'), ['--package=@s/pkg@1.2.3', 'bin']);
+    assert.deepStrictEqual(pin('uvx', ['mcp-server-fetch'], '2026.8.18'), ['mcp-server-fetch@2026.8.18']);
+    assert.deepStrictEqual(pin('uvx', ['--from', 'pkg[cli]', 'pkg'], '1.0'), ['--from', 'pkg[cli]==1.0', 'pkg']);
+    assert.strictEqual(pin('pipx', ['run', 'pkg'], '1.0'), null);
+  });
+  t('a locked server runs the locked version, and refuses another', () => {
+    const entry = { package: { ecosystem: 'npm', name: 'srv', version: '1.0.0' } };
+    assert.deepStrictEqual(lf.lockedRun(entry, 'npx', ['-y', 'srv']).args, ['-y', 'srv@1.0.0']);
+    assert.deepStrictEqual(lf.lockedRun(entry, 'npx', ['-y', 'srv@1.0.0']).args, ['-y', 'srv@1.0.0']);
+    assert.throws(() => lf.lockedRun(entry, 'npx', ['-y', 'srv@1.0.1']), /runs srv 1\.0\.1, but mcp-pin\.lock approved 1\.0\.0/);
+    assert.throws(() => lf.lockedRun(entry, 'npx', ['-y', 'other-srv']), /no longer runs srv/);
+    assert.deepStrictEqual(lf.lockedRun({}, 'npx', ['-y', 'srv']).args, ['-y', 'srv']);
+  });
+
+  // The whole flow offline: a fake npm registry, and a fake npx first on PATH
+  // that logs its arguments and runs the era test server.
+  const dir = tmp('mcp-pin-pkg-');
+  const home = path.join(dir, 'home');
+  const db = path.join(dir, 'registry.json');
+  const portFile = path.join(dir, 'port');
+  const npxLog = path.join(dir, 'npx.log');
+  const bin = path.join(dir, 'bin');
+  fs.mkdirSync(bin);
+  const era = path.join(__dirname, 'era-server.js');
+  if (process.platform === 'win32') {
+    fs.writeFileSync(path.join(bin, 'npx.cmd'), `@>>"%NPX_LOG%" echo %*\r\n@"${process.execPath}" "${era}"\r\n`);
+  } else {
+    fs.writeFileSync(path.join(bin, 'npx'), `#!/bin/sh\necho "$@" >> "$NPX_LOG"\nexec "${process.execPath}" "${era}"\n`, { mode: 0o755 });
+  }
+  const publish = (latest, versions) => fs.writeFileSync(db, JSON.stringify({ 'fake-srv': { 'dist-tags': { latest }, versions } }));
+  publish('1.0.0', { '1.0.0': 'sha512-AAAA' });
+  const registry = spawn(process.execPath, [path.join(__dirname, 'fake-registry.js'), db, portFile], { stdio: 'ignore' });
+  const nap = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+  for (let i = 0; i < 200 && !fs.existsSync(portFile); i++) nap(25);
+  try {
+    const env = Object.assign({}, process.env, { MCP_PIN_HOME: home, ATTEST_HOME: home, NO_COLOR: '1', NPX_LOG: npxLog, ERA: 'legacy',
+      MCP_PIN_NPM_REGISTRY: 'http://127.0.0.1:' + fs.readFileSync(portFile, 'utf8') });
+    const pk2 = Object.keys(env).find((k) => k.toUpperCase() === 'PATH');
+    env[pk2] = bin + path.delimiter + env[pk2];
+    const cfg = path.join(dir, '.mcp.json');
+    const lockFile = path.join(dir, 'mcp-pin.lock');
+    fs.writeFileSync(cfg, JSON.stringify({ mcpServers: { era: { command: 'npx', args: ['-y', 'fake-srv'] } } }));
+    const lock = (...extra) => spawnSync(process.execPath, [ATTEST, 'lock', '--config', cfg, '--out', lockFile, ...extra], { env, encoding: 'utf8', timeout: 30000 });
+    // cmd.exe hands a .cmd file its arguments quoted; the shell script does not.
+    const lastRun = () => fs.readFileSync(npxLog, 'utf8').trim().split('\n').pop().replace(/"/g, '').trim();
+
+    const w = lock();
+    t('lock records the exact version and its digest, and probes that version', () => {
+      assert.strictEqual(w.status, 0, w.stdout + w.stderr);
+      assert.match(w.stdout, /era: locked \(1 tool\(s\), fake-srv 1\.0\.0\)/);
+      const p = JSON.parse(fs.readFileSync(lockFile, 'utf8')).servers.era.package;
+      assert.deepStrictEqual([p.ecosystem, p.name, p.version, p.integrity], ['npm', 'fake-srv', '1.0.0', 'sha512-AAAA']);
+      assert.strictEqual(lastRun(), '-y fake-srv@1.0.0');
+    });
+    publish('1.0.1', { '1.0.0': 'sha512-AAAA', '1.0.1': 'sha512-BBBB' });
+    const c1 = lock('--check');
+    t('a newer version does not fail CI: the project keeps running the locked one', () => {
+      assert.strictEqual(c1.status, 0, c1.stdout + c1.stderr);
+      assert.match(c1.stdout, /fake-srv 1\.0\.1 is out; this project keeps running 1\.0\.0/);
+      assert.strictEqual(lastRun(), '-y fake-srv@1.0.0');
+    });
+    const r = spawnSync(process.execPath, [path.join(__dirname, 'era-client.js'), 'legacy-twice', process.execPath, ATTEST,
+      '--lock', lockFile, '--name', 'era', '--', 'npx', '-y', 'fake-srv'], { env, encoding: 'utf8', timeout: 20000 });
+    t('the proxy runs the locked version although the config asks for the newest', () => {
+      assert.match(r.stdout, /CLIENT SAW/, r.stdout + r.stderr);
+      assert.match(r.stderr, /running fake-srv 1\.0\.0, the version in the lock/);
+      assert.strictEqual(lastRun(), '-y fake-srv@1.0.0');
+    });
+    const other = spawnSync(process.execPath, [ATTEST, '--lock', lockFile, '--name', 'era', '--', 'npx', '-y', 'fake-srv@1.0.1'], { env, encoding: 'utf8', input: '', timeout: 10000 });
+    t('the proxy refuses a config that runs a version the lock did not approve', () => {
+      assert.strictEqual(other.status, 1);
+      assert.match(other.stderr, /runs fake-srv 1\.0\.1, but mcp-pin\.lock approved 1\.0\.0/);
+    });
+    publish('1.0.1', { '1.0.0': 'sha512-EVIL', '1.0.1': 'sha512-BBBB' });
+    const c2 = lock('--check');
+    t('different contents for the same version fail CI', () => {
+      assert.strictEqual(c2.status, 1, c2.stdout);
+      assert.match(c2.stdout, /registry now serves different contents for fake-srv 1\.0\.0/);
+    });
+    const plan = spawnSync(process.execPath, [ATTEST, 'wrap', '--config', cfg, '--dry-run'], { env: Object.assign({}, env, { HOME: path.join(dir, 'h'), USERPROFILE: path.join(dir, 'h'), APPDATA: path.join(dir, 'h'), XDG_CONFIG_HOME: path.join(dir, 'h') }), encoding: 'utf8', timeout: 10000 });
+    t('wrap points out servers whose package is not pinned', () => {
+      assert.match(plan.stdout, /fake-srv, newest version: not pinned, so its code can change on any start/, plan.stdout);
+    });
+  } finally {
+    registry.kill();
+  }
 }
 
 process.stdout.write('starting servers on windows\n');
