@@ -1,0 +1,7 @@
+Fonts on this site are served under the SIL Open Font License, Version 1.1 (https://openfontlicense.org).
+
+fraunces.woff: Fraunces. Copyright 2020 The Fraunces Project Authors (github.com/undercasetype/Fraunces)
+fraunces-italic.woff: Fraunces. Copyright 2020 The Fraunces Project Authors (github.com/undercasetype/Fraunces)
+hanken.woff: Hanken Grotesk. Copyright 2021 The Hanken Grotesk Project Authors (https://github.com/marcologous/hanken-grotesk)
+plexmono.woff: IBM Plex Mono. Copyright 2017 IBM Corp. All rights reserved.
+plexmono-medium.woff: IBM Plex Mono Medium. Copyright 2017 IBM Corp. All rights reserved.

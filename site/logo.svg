@@ -1,9 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="mcp-pin">
   <title>mcp-pin</title>
-  <rect width="64" height="64" rx="14" fill="#0d1117"/>
-  <rect x="14" y="20" width="30" height="6" rx="3" fill="#8b949e"/>
-  <rect x="14" y="31" width="30" height="6" rx="3" fill="#8b949e"/>
-  <rect x="14" y="42" width="30" height="6" rx="3" fill="#3fb950"/>
-  <circle cx="44" cy="16" r="6.5" fill="#3fb950"/>
-  <path d="M44 22.5 L44 52" stroke="#3fb950" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <defs>
+    <radialGradient id="head" cx="36%" cy="30%" r="74%">
+      <stop offset="0" stop-color="#ff6a5c"/>
+      <stop offset=".42" stop-color="#d4271f"/>
+      <stop offset="1" stop-color="#6e0a0b"/>
+    </radialGradient>
+    <linearGradient id="steel" x1="0" x2="1">
+      <stop offset="0" stop-color="#8d9096"/>
+      <stop offset=".5" stop-color="#f1f2f4"/>
+      <stop offset="1" stop-color="#7d8086"/>
+    </linearGradient>
+  </defs>
+  <path d="M32 41.5 L32 61.2" stroke="url(#steel)" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="32" cy="23.5" r="19.5" fill="url(#head)"/>
+  <ellipse cx="25" cy="21" rx="5.6" ry="6.1" fill="#f5f1ea"/>
+  <ellipse cx="39" cy="21" rx="5.6" ry="6.1" fill="#f5f1ea"/>
+  <circle cx="25.8" cy="22.2" r="3.1" fill="#120f0d"/>
+  <circle cx="39.8" cy="22.2" r="3.1" fill="#120f0d"/>
+  <circle cx="24.6" cy="20.8" r="1" fill="#fff"/>
+  <circle cx="38.6" cy="20.8" r="1" fill="#fff"/>
+  <ellipse cx="25.5" cy="10.8" rx="6.4" ry="2.6" fill="#fff" opacity=".22"/>
 </svg>

@@ -5,34 +5,57 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Install mcp-pin</title>
 <meta name="description" content="Protect the MCP servers in your AI apps with mcp-pin: one command for every app, one click for Cursor and VS Code, and install buttons for server authors.">
+<meta name="theme-color" content="#0b0a09">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<!-- Self-contained on purpose: the same design system as the rest of the site, inline. -->
 <style>
-:root{--ink:#161514;--muted:#5C5650;--paper:#F6F1E9;--card:#FFFFFF;--line:#E2D9CC;--accent:#B4232A}
+@font-face{font-family:"Fraunces";src:url(/fonts/fraunces.woff) format("woff");font-weight:300 700;font-display:swap}
+@font-face{font-family:"Fraunces";src:url(/fonts/fraunces-italic.woff) format("woff");font-weight:300 700;font-style:italic;font-display:swap}
+@font-face{font-family:"Hanken Grotesk";src:url(/fonts/hanken.woff) format("woff");font-weight:100 900;font-display:swap}
+@font-face{font-family:"IBM Plex Mono";src:url(/fonts/plexmono.woff) format("woff");font-weight:400;font-display:swap}
+:root{--bg:#0b0a09;--bg-2:#110f0d;--bg-3:#17140f;--line:rgba(243,237,226,.09);--line-2:rgba(243,237,226,.17);--ink:#f3ede2;--ink-2:#c9c1b4;--ink-3:#958c80;
+  --seal:#d4271f;--seal-hi:#ff5c4f;--brass:#cba56a;--serif:"Fraunces",Georgia,serif;--sans:"Hanken Grotesk",-apple-system,"Segoe UI",sans-serif;--mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color-scheme:dark}
 *{box-sizing:border-box}
-body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
-main{max-width:860px;margin:0 auto;padding:40px 20px 80px}
-a{color:var(--accent)}
-h1{font-size:clamp(36px,6vw,56px);line-height:1;margin:18px 0 12px;letter-spacing:-.02em}
-h2{font-size:24px;margin:0 0 6px}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+::selection{background:var(--seal);color:#fff}
+a{color:inherit}
+.top{position:sticky;top:0;z-index:5;background:rgba(11,10,9,.78);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+.top div{max-width:1000px;margin:0 auto;padding:0 clamp(20px,4vw,40px);height:64px;display:flex;align-items:center;gap:24px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;text-decoration:none;margin-right:auto}
+.brand img{width:26px;height:26px}
+.top a.l{color:var(--ink-2);text-decoration:none;font-size:14.5px}.top a.l:hover{color:var(--ink)}
+main{max-width:1000px;margin:0 auto;padding:clamp(56px,10vh,110px) clamp(20px,4vw,40px) 110px}
+.eyebrow{font:500 12.5px/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);display:flex;align-items:center;gap:10px;margin:0 0 22px}
+.eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--seal);box-shadow:0 0 12px rgba(212,39,31,.4)}
+h1{font:360 clamp(2.8rem,7vw,5.4rem)/.98 var(--serif);letter-spacing:-.035em;margin:0 0 22px}
+h1 em,h2 em{font-style:italic;color:var(--ink-2);font-weight:330}
+h2{font:400 clamp(1.5rem,2.6vw,2rem)/1.15 var(--serif);letter-spacing:-.02em;margin:0 0 10px}
 p{margin:0 0 12px}
-.lede{font-size:19px;color:#3D3833;max-width:640px}
-section{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px;margin-top:22px}
-.muted{color:var(--muted);font-size:15px}
-pre{margin:10px 0 0;background:#161514;color:#EDE7DD;border-radius:12px;padding:14px 16px;font:14px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word}
-.row{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
-.btn{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:999px;border:1.5px solid var(--ink);background:var(--ink);color:#FFFFFF;text-decoration:none;font-weight:600;cursor:pointer;font-size:15px}
-.btn.line{background:transparent;color:var(--ink)}
-label{display:block;font-weight:600;margin:14px 0 6px}
-input{width:100%;min-height:44px;border:1.5px solid var(--line);border-radius:12px;padding:0 14px;font:15px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#FFFFFF;color:var(--ink)}
-input:focus{outline:3px solid var(--accent);outline-offset:1px}
-nav{display:flex;justify-content:space-between;align-items:center;font-weight:700}
-nav a{color:var(--ink);text-decoration:none}
+.lede{font-size:clamp(1.1rem,1.5vw,1.3rem);color:var(--ink-2);max-width:56ch;margin-bottom:34px}
+section{background:linear-gradient(180deg,var(--bg-3),var(--bg-2));border:1px solid var(--line);border-radius:24px;padding:clamp(24px,3vw,34px);margin-top:16px}
+.muted{color:var(--ink-2);font-size:15.5px;max-width:70ch}
+code{font-family:var(--mono);font-size:.88em;background:var(--bg);border:1px solid var(--line);padding:.1em .45em;border-radius:6px}
+pre{margin:14px 0 0;background:#0e0c0a;color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:15px 18px;font:13.5px/1.65 var(--mono);white-space:pre-wrap;word-break:break-word}
+.row{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.btn{display:inline-flex;align-items:center;height:46px;padding:0 20px;border-radius:999px;border:1px solid transparent;background:var(--ink);color:#0b0a09;text-decoration:none;font:600 14.5px var(--sans);cursor:pointer}
+.btn:hover{background:#fff}
+.btn.line{background:transparent;color:var(--ink);border-color:var(--line-2)}
+.btn.line:hover{border-color:var(--ink)}
+label{display:block;font-weight:600;font-size:14.5px;color:var(--ink-2);margin:18px 0 8px}
+input{width:100%;height:50px;border:1px solid var(--line-2);border-radius:14px;padding:0 16px;font:14.5px var(--mono);background:var(--bg);color:var(--ink)}
+input:focus,a:focus-visible,button:focus-visible{outline:2px solid var(--seal-hi);outline-offset:2px}
+.foot{max-width:1000px;margin:0 auto;padding:30px clamp(20px,4vw,40px) 60px;color:var(--ink-3);font-size:14px;border-top:1px solid var(--line)}
 </style>
 </head>
 <body>
+<header class="top"><div>
+<a class="brand" href="/"><img src="/logo.svg" width="26" height="26" alt="">mcp-pin</a>
+<a class="l" href="/log/">Public log</a><a class="l" href="/#teams">Teams</a><a class="l" href="https://github.com/GautamTalksDev/mcp-pin">GitHub</a>
+</div></header>
 <main>
-<nav><a href="/">mcp-pin</a><a href="https://github.com/GautamTalksDev/mcp-pin" style="font-weight:500">GitHub</a></nav>
-<h1>Install mcp-pin</h1>
-<p class="lede">Pin the tools your AI apps approved, and block a server the moment they change. Free, MIT, nothing leaves your machine.</p>
+<p class="eyebrow">Install</p>
+<h1>Pin what your apps <em>approved.</em></h1>
+<p class="lede">One command protects every app on this machine, or pick the way that fits. Free and MIT licensed. The proxy runs locally and makes no network calls.</p>
 
 <section>
 <h2>Every app on this machine</h2>
@@ -80,6 +103,7 @@ claude plugin install mcp-pin@mcp-pin</pre>
 <pre id="srv-badge"></pre>
 </section>
 </main>
+<p class="foot">An independent open-source project by Gautam Khosla, not affiliated with Anthropic or the Model Context Protocol project. <a href="/">mcp-pin.gautamkhosla.com</a></p>
 <script>
 (function () {
   var V = '__MCP_PIN_VERSION__';
