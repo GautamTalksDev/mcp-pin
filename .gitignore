@@ -23,6 +23,8 @@ crawler/outreach.js
 .vscode/
 .windsurfrules
 .mcp.json
+# the plugin's own server config ships with the plugin
+!plugins/mcp-pin/.mcp.json
 CLAUDE.md
 .github/copilot-instructions.md
 weppy-project-sync/
