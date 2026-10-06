@@ -738,6 +738,10 @@ process.stdout.write('claude code plugin and install page\n');
     assert.deepStrictEqual(gemini.mcpServers['mcp-pin'].args, ['-y', 'mcp-pin@' + pkg.version, 'lookup']);
     assert.ok(fs.existsSync(path.join(ROOT, gemini.contextFileName)));
     assert.strictEqual(read('plugins/mcp-pin/.claude-plugin/plugin.json').version, pkg.version);
+    assert.strictEqual(read('plugins/mcp-pin/plugin.json').version, pkg.version);
+    const cursor = read('plugins/mcp-pin/.cursor-plugin/plugin.json');
+    assert.strictEqual(cursor.version, pkg.version);
+    for (const p of [cursor.logo, cursor.mcpServers, cursor.hooks]) assert.ok(fs.existsSync(path.join(ROOT, 'plugins/mcp-pin', p)), p);
   });
   t('the skill has the frontmatter agents need', () => {
     const md = fs.readFileSync(path.join(ROOT, 'plugins/mcp-pin/skills/mcp-pin/SKILL.md'), 'utf8');

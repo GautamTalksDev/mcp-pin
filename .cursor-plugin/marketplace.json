@@ -1,0 +1,14 @@
+{
+  "name": "mcp-pin",
+  "owner": {
+    "name": "Gautam Khosla"
+  },
+  "plugins": [
+    {
+      "name": "mcp-pin",
+      "source": "plugins/mcp-pin",
+      "description": "Lookup tools for the mcp-pin public log and your pins, and a skill for checking MCP servers before you trust them.",
+      "category": "security"
+    }
+  ]
+}

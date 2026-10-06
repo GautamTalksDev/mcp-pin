@@ -34,6 +34,10 @@ claude plugin marketplace add GautamTalksDev/mcp-pin
 claude plugin install mcp-pin@mcp-pin
 ```
 
+### In Cursor
+
+The same folder is a Cursor plugin (`.cursor-plugin/plugin.json`): it adds the four lookup tools and the skill. The session-start note reads Claude Code's config, so Cursor does not run it. To try it before it is in the Cursor marketplace, copy this folder to `~/.cursor/plugins/local/mcp-pin` and restart Cursor.
+
 ## Links
 
 - Source and full documentation: https://github.com/GautamTalksDev/mcp-pin
