@@ -9,4 +9,7 @@ readline.createInterface({ input: p.stdout }).on('line', (l) => {
 });
 p.stdin.on('error', () => {});
 p.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }) + '\n');
-setTimeout(() => { p.kill(); process.exit(0); }, 8000);
+// The concurrency test raises this: 16 wrappers on a slow Windows runner can
+// take longer than 8 s, and a client that gives up kills its wrapper mid-pin.
+const waitMs = Number(process.env.FAKE_CLIENT_TIMEOUT_MS) || 8000;
+setTimeout(() => { console.error('CLIENT TIMEOUT'); p.kill(); process.exit(0); }, waitMs);
