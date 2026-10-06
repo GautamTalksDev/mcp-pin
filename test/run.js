@@ -168,6 +168,12 @@ t('recently changed server reads changed', () => {
   const svg = badgeFor({ set_hash: 'x', first_seen_at: '2026-01-01T00:00:00Z', last_change_at: ago(0), last_change_after: ago(1), last_ok_at: ago(0) });
   assert.ok(svg.includes('changed today'));
 });
+t('badge text cannot break out of an attribute or into markup', () => {
+  const { badge } = require(path.join(ROOT, 'crawler/badge'));
+  const svg = badge('a" onload="alert(1)', "b' onclick='x'><script>y</script>", '#000');
+  assert.ok(!/onload="|onclick='|<script/.test(svg), svg.slice(0, 200));
+  assert.ok(svg.includes('a&quot; onload=&quot;alert(1)') && svg.includes('b&#39; onclick=&#39;x&#39;&gt;&lt;script&gt;'));
+});
 t('stops counting when the crawler stops looking', () => {
   const svg = badgeFor({ set_hash: 'x', first_seen_at: ago(40), last_change_at: null, last_probe_at: ago(30) });
   assert.ok(svg.includes('last checked'), svg.slice(0, 160));
@@ -1226,7 +1232,7 @@ function s(id,result){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id,resu
   });
   t('never phones home: baseline stays in the repo', () => {
     const src = fs.readFileSync(path.join(ROOT, 'action/index.js'), 'utf8');
-    assert.ok(src.includes('mcp-pin.gautamkhosla.com') === false, 'action must not contact the public log');
+    assert.ok(!/mcp-pin\.gautamkhosla\.com/.test(src), 'action must not contact the public log');
   });
 }
 
