@@ -298,6 +298,12 @@ Made by <a href="https://github.com/GautamTalksDev">Gautam Khosla</a> for <a hre
   var $ = function (id) { return document.getElementById(id); };
   var order = [], idx = 0, answers = [], timer = null, t0 = 0, locked = false;
 
+  // Every HTML string on this page is built from the rounds above and escaped
+  // by esc(). The site's CSP enforces Trusted Types, so this one named policy
+  // is the only way a string can become HTML here; anything else is refused.
+  var policy = window.trustedTypes && window.trustedTypes.createPolicy('spot', { createHTML: function (s) { return s; } });
+  function setHtml(el, html) { el.innerHTML = policy ? policy.createHTML(html) : html; }
+
   function shuffle(a) {
     for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
     return a;
@@ -316,11 +322,11 @@ Made by <a href="https://github.com/GautamTalksDev">Gautam Khosla</a> for <a hre
   }
 
   function dots() {
-    $('dots').innerHTML = order.map(function (_, i) {
+    setHtml($('dots'), order.map(function (_, i) {
       var a = answers[i];
       var c = i === idx && !a ? 'now' : a ? (a.right ? 'ok' : 'no') : '';
       return '<i class="' + c + '"></i>';
-    }).join('');
+    }).join(''));
   }
 
   function round() {
@@ -328,8 +334,8 @@ Made by <a href="https://github.com/GautamTalksDev">Gautam Khosla</a> for <a hre
     locked = false;
     $('count').textContent = (idx + 1) + ' / ' + order.length;
     $('toolname').textContent = r.a.name;
-    $('before').innerHTML = render(r.a);
-    $('after').innerHTML = render(today(r));
+    setHtml($('before'), render(r.a));
+    setHtml($('after'), render(today(r)));
     $('verdict').hidden = true; $('next').hidden = true;
     $('choose').hidden = false; $('keys').hidden = false;
     dots();
@@ -355,17 +361,17 @@ Made by <a href="https://github.com/GautamTalksDev">Gautam Khosla</a> for <a hre
     var right = choice === correct;
     answers[idx] = { round: r, choice: choice, right: right, timedOut: !!timedOut };
     var d = renderDiff(r.a, today(r));
-    $('before').innerHTML = d[0];
-    $('after').innerHTML = d[1];
+    setHtml($('before'), d[0]);
+    setHtml($('after'), d[1]);
     var head = timedOut ? 'Out of time, so it was kept.' : right ? 'Right call.' : 'Not quite.';
     var label = r.kind === 'bad' ? 'This was a rug pull.' : r.kind === 'benign' ? 'This change was harmless.' : 'This tool did not change.';
     var pin = r.kind === 'same' ? 'mcp-pin: 1 tool unchanged, session continues.'
       : 'mcp-pin: TOOL DEFINITIONS CHANGED SINCE YOU APPROVED THIS SERVER. Session blocked, diff shown.';
     var v = $('verdict');
     v.className = 'verdict ' + (right ? 'good' : 'bad');
-    v.innerHTML = '<b>' + esc(head) + '</b>' + esc(label) + ' ' + esc(r.why) +
+    setHtml(v, '<b>' + esc(head) + '</b>' + esc(label) + ' ' + esc(r.why) +
       (timedOut ? '<p>In real life, doing nothing means the change goes through.</p>' : '') +
-      '<div class="pin">' + esc(pin) + '</div>';
+      '<div class="pin">' + esc(pin) + '</div>');
     v.hidden = false;
     $('choose').hidden = true; $('keys').hidden = true;
     // On a phone the panes stack, so bring the verdict into view.
@@ -386,7 +392,7 @@ Made by <a href="https://github.com/GautamTalksDev">Gautam Khosla</a> for <a hre
     var caught = answers.filter(function (a) { return a.round.kind === 'bad' && a.choice === 'block'; }).length;
     var falseBlocks = answers.filter(function (a) { return a.round.kind !== 'bad' && a.choice === 'block'; }).length;
     var missedSchema = answers.some(function (a) { return a.round.a.name === 'create_ticket' && a.choice !== 'block'; });
-    $('score').innerHTML = caught + ' <small>of ' + BAD_TOTAL + ' rug pulls caught</small>';
+    setHtml($('score'), caught + ' <small>of ' + BAD_TOTAL + ' rug pulls caught</small>');
     var rank;
     if (caught === BAD_TOTAL && !falseBlocks) rank = 'Perfect. Now do that for every tool on every server, every session, forever.';
     else if (caught === BAD_TOTAL) rank = 'You caught them all, and blocked something harmless too. Good instinct. mcp-pin does the same, then lets you approve it in one command.';
@@ -396,12 +402,12 @@ Made by <a href="https://github.com/GautamTalksDev">Gautam Khosla</a> for <a hre
     $('rank').textContent = rank;
     var right = answers.filter(function (a) { return a.right; }).length;
     $('youbig').textContent = right + ' of ' + answers.length + ' right calls';
-    $('rows').innerHTML = answers.map(function (a) {
+    setHtml($('rows'), answers.map(function (a) {
       var what = a.round.kind === 'bad' ? 'rug pull' : a.round.kind === 'benign' ? 'harmless change' : 'unchanged';
       var did = a.timedOut ? 'ran out of time' : a.choice === 'block' ? 'blocked' : 'kept';
       return '<li><span class="m ' + (a.right ? 'ok' : 'no') + '">' + (a.right ? '&#10003;' : '&#10007;') + '</span><span><code>' +
         esc(a.round.a.name) + '</code>, ' + what + ', you ' + did + '</span></li>';
-    }).join('');
+    }).join(''));
     show('end');
     lastCaught = caught;
   }

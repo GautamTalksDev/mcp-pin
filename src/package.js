@@ -17,6 +17,21 @@ const path = require('path');
 const EXACT = /^v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const PY_EXACT = /^\d+(?:\.\d+)*(?:(?:a|b|rc)\d+)?(?:\.post\d+)?(?:\.dev\d+)?$/;
 
+// A version taken from a registry answer or a lock file ends up on a command
+// line, so it must be a plain version number (or an image digest): never a
+// tag, range, path, URL or git spec, which a runner would fetch from
+// somewhere else.
+const NPM_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+const OCI_DIGEST = /^sha256:[0-9a-f]{64}$/;
+
+function plainVersion(ecosystem, version) {
+  const v = String(version);
+  if (ecosystem === 'npm') return NPM_VERSION.test(v);
+  if (ecosystem === 'pypi') return PY_EXACT.test(v);
+  if (ecosystem === 'oci') return OCI_DIGEST.test(v);
+  return false;
+}
+
 function base(command) {
   return path.basename(String(command || '')).toLowerCase().replace(/\.(cmd|exe|bat|ps1)$/, '');
 }
@@ -128,6 +143,7 @@ function packageOf(command, args) {
 // The same arguments with the package pinned to `version`, or null when
 // this form cannot be pinned in place (a pipx positional, uvx with extras).
 function pinnedArgs(args, pkg, version) {
+  if (!plainVersion(pkg.ecosystem, version)) return null;
   let spec = null;
   if (pkg.ecosystem === 'npm') spec = pkg.name + '@' + version;
   else if (pkg.ecosystem === 'oci') spec = pkg.name + '@' + version; // image[:tag]@sha256:...
@@ -177,12 +193,14 @@ async function resolve(pkg, timeoutMs = 15000) {
     const name = pkg.name.startsWith('@') ? '@' + encodeURIComponent(pkg.name.slice(1)) : encodeURIComponent(pkg.name);
     const m = await getJson(`${npmRegistry(pkg)}/${name}/${encodeURIComponent(want)}`, timeoutMs);
     if (!m || typeof m.version !== 'string') throw new Error('registry answer has no version');
+    if (!NPM_VERSION.test(m.version)) throw new Error('the registry answered a version that is not a plain version number');
     return { version: m.version, integrity: (m.dist && m.dist.integrity) || null };
   }
   if (pkg.ecosystem === 'pypi') {
     if (!pkg.version && pkg.requested && pkg.requested !== 'latest') throw new Error(`"${pkg.requested}" is a version range; pin an exact version`);
     const m = await getJson(`${pypiIndex()}/pypi/${encodeURIComponent(pkg.name)}/${pkg.version ? encodeURIComponent(pkg.version) + '/' : ''}json`, timeoutMs);
     if (!m || !m.info || typeof m.info.version !== 'string') throw new Error('index answer has no version');
+    if (!PY_EXACT.test(m.info.version)) throw new Error('the index answered a version that is not a plain version number');
     const files = (Array.isArray(m.urls) ? m.urls : [])
       .map((u) => ({ filename: String(u.filename), sha256: u.digests && u.digests.sha256 }))
       .filter((f) => f.sha256)
@@ -199,4 +217,4 @@ function describe(pkg) {
   return `${pkg.name}, ${what}: not pinned, so its code can change on any start`;
 }
 
-module.exports = { packageOf, pinnedArgs, resolve, describe };
+module.exports = { packageOf, pinnedArgs, plainVersion, resolve, describe };

@@ -17,7 +17,7 @@ const { observe } = require('./definitions');
 const { spawnServer } = require('./spawn');
 const store = require('./store');
 const { isStdio, unwrapEntry } = require('./wrap');
-const { packageOf, pinnedArgs } = require('./package');
+const { packageOf, pinnedArgs, plainVersion } = require('./package');
 
 const VERSION = require('../package.json').version;
 
@@ -138,8 +138,11 @@ function sameContents(a, b) {
 function lockedRun(entry, command, args) {
   const want = entry && entry.package;
   if (!want || !want.version) return { args };
-  const have = packageOf(command, args);
   const update = 'update the lock in a pull request (mcp-pin lock)';
+  // The version goes on the command line: a hand-edited lock cannot slip in
+  // a tag, path, URL or git spec for the runner to fetch instead.
+  if (!plainVersion(want.ecosystem, want.version)) throw new Error(`mcp-pin.lock records a version for ${want.name} that is not a plain version number; ${update}`);
+  const have = packageOf(command, args);
   if (!have || have.ecosystem !== want.ecosystem || have.name !== want.name) {
     throw new Error(`this server no longer runs ${want.name}, which mcp-pin.lock approved; ${update}`);
   }

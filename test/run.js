@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 const assert = require('assert');
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -742,6 +743,34 @@ process.stdout.write('claude code plugin and install page\n');
     assert.ok(html.includes('__MCP_PIN_VERSION__'));
     assert.ok(fs.readFileSync(path.join(ROOT, 'site/build.js'), 'utf8').includes("split('__MCP_PIN_VERSION__')"));
   });
+  t('the site runs only scripts it lists, and no string reaches an HTML sink', () => {
+    const out = tmp('mcp-pin-site-');
+    const b = spawnSync(process.execPath, [path.join(ROOT, 'site/build.js'), '--data', path.join(ROOT, 'data'), '--out', out], { encoding: 'utf8', timeout: 120000 });
+    assert.strictEqual(b.status, 0, b.stdout + b.stderr);
+    const csp = /Content-Security-Policy: (.*)/.exec(fs.readFileSync(path.join(out, '_headers'), 'utf8'))[1];
+    const scriptSrc = /script-src ([^;]*)/.exec(csp)[1].trim().split(/\s+/);
+    assert.ok(!scriptSrc.some((s) => /unsafe|__/.test(s)), scriptSrc.join(' '));
+    assert.match(csp, /require-trusted-types-for 'script'; trusted-types spot/);
+    // every inline script served is allowed by its exact hash, and nothing else is
+    const pages = ['index.html', 'log/index.html', 'install/index.html', 'spot/index.html', 'about.html'];
+    const inline = [];
+    for (const p of pages) {
+      for (const m of fs.readFileSync(path.join(out, p), 'utf8').matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)) {
+        inline.push(`'sha256-${crypto.createHash('sha256').update(m[1].replace(/\r\n?/g, '\n')).digest('base64')}'`);
+      }
+    }
+    assert.ok(inline.length >= 2, 'the install and spot pages carry their scripts inline');
+    assert.deepStrictEqual(scriptSrc.slice(1).sort(), [...new Set(inline)].sort());
+    const meta = /http-equiv="Content-Security-Policy" content="([^"]*)"/.exec(fs.readFileSync(path.join(out, 'index.html'), 'utf8'))[1];
+    assert.match(meta, /script-src 'self'; /);
+    assert.match(meta, /trusted-types 'none'/);
+    // the only HTML sink in page code is the spot page's named policy
+    for (const f of ['site/ui/site.js', 'site/install/index.html']) {
+      assert.ok(!/innerHTML|outerHTML|insertAdjacentHTML|document\.write|\beval\(|new Function/.test(fs.readFileSync(path.join(ROOT, f), 'utf8')), f);
+    }
+    const spot = fs.readFileSync(path.join(ROOT, 'site/spot/index.html'), 'utf8');
+    assert.strictEqual((spot.match(/innerHTML/g) || []).length, 1, 'the spot page writes HTML only through setHtml');
+  });
 }
 
 process.stdout.write('team lockfile\n');
@@ -894,6 +923,19 @@ process.stdout.write('package pinning\n');
     assert.deepStrictEqual(pin('uvx', ['--from', 'pkg[cli]', 'pkg'], '1.0'), ['--from', 'pkg[cli]==1.0', 'pkg']);
     assert.strictEqual(pin('pipx', ['run', 'pkg'], '1.0'), null);
   });
+  t('only a plain version number ever reaches a command line', () => {
+    const pin = (c, a, v) => pk.pinnedArgs(a, pk.packageOf(c, a), v);
+    for (const v of ['github:evil/x', 'file:../x', 'https://evil.example/x.tgz', 'git+ssh://evil/x', 'latest', '^1.0.0', 'v1.0.0', '1.0.0 && calc', '1.0.0/../x', '1.0.0\n--registry=x']) {
+      assert.strictEqual(pin('npx', ['-y', 'srv'], v), null, JSON.stringify(v));
+    }
+    assert.strictEqual(pin('uvx', ['srv'], '1.0 ; rm -rf ~'), null);
+    assert.strictEqual(pin('uvx', ['srv'], 'git+https://evil.example/x'), null);
+    assert.strictEqual(pin('docker', ['run', '-i', 'img'], 'sha256:not-a-digest'), null);
+    assert.deepStrictEqual(pin('npx', ['-y', 'srv'], '1.0.0-beta.1+build.5'), ['-y', 'srv@1.0.0-beta.1+build.5']);
+    assert.deepStrictEqual(pin('docker', ['run', '-i', 'img'], 'sha256:' + 'a'.repeat(64)), ['run', '-i', 'img@sha256:' + 'a'.repeat(64)]);
+    const forged = { package: { ecosystem: 'npm', name: 'srv', version: 'github:evil/x' } };
+    assert.throws(() => lf.lockedRun(forged, 'npx', ['-y', 'srv']), /not a plain version number/);
+  });
   t('a locked server runs the locked version, and refuses another', () => {
     const entry = { package: { ecosystem: 'npm', name: 'srv', version: '1.0.0' } };
     assert.deepStrictEqual(lf.lockedRun(entry, 'npx', ['-y', 'srv']).args, ['-y', 'srv@1.0.0']);
@@ -971,6 +1013,15 @@ process.stdout.write('package pinning\n');
     const plan = spawnSync(process.execPath, [ATTEST, 'wrap', '--config', cfg, '--dry-run'], { env: Object.assign({}, env, { HOME: path.join(dir, 'h'), USERPROFILE: path.join(dir, 'h'), APPDATA: path.join(dir, 'h'), XDG_CONFIG_HOME: path.join(dir, 'h') }), encoding: 'utf8', timeout: 10000 });
     t('wrap points out servers whose package is not pinned', () => {
       assert.match(plan.stdout, /fake-srv, newest version: not pinned, so its code can change on any start/, plan.stdout);
+    });
+    // A registry (or anything between us and it) answers with a "version" that
+    // npx would treat as a place to fetch code from.
+    publish('github:evil/x', { '1.0.0': 'sha512-AAAA', 'github:evil/x': 'sha512-EVIL' });
+    const hostile = lock();
+    t('a registry answer whose version is not a plain version number is never run', () => {
+      assert.strictEqual(hostile.status, 1, hostile.stdout + hostile.stderr);
+      assert.match(hostile.stdout, /could not check its package fake-srv \(the registry answered a version that is not a plain version number\)/);
+      assert.ok(!fs.readFileSync(npxLog, 'utf8').includes('evil'), 'npx must never see the hostile spec');
     });
   } finally {
     registry.kill();

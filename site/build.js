@@ -44,8 +44,11 @@ const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</
 const strip = (s) => String(s).replace(/\x1b\[[0-9;]*m/g, '');
 
 const DESC = 'mcp-pin remembers what every MCP server told your AI the day you approved it, and stops the session when that changes. Plus a signed public log of every version.';
-// Fonts, media, styles and script are served from this site only; the CSP says so.
-const CSP = "default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self' 'unsafe-inline'; media-src 'self'; base-uri 'none'; form-action 'none'";
+// Fonts, media, styles and script are served from this site only, these pages
+// run no inline script, and no string can reach an HTML sink (Trusted Types);
+// the CSP says so. The header policy in _headers matches, plus the hashes of
+// the two self-contained pages' inline scripts.
+const CSP = "default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; media-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; require-trusted-types-for 'script'; trusted-types 'none'";
 const version = (rel) => crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 'ui', rel))).digest('hex').slice(0, 10);
 const V = { css: version('theme.css'), js: version('site.js') };
 const FILM = 'https://www.youtube.com/watch?v=tGtbDNr9qvE';
@@ -179,19 +182,22 @@ function changeSummary(prev, cur) {
   const og = path.join(__dirname, 'og.png');
   if (fs.existsSync(og)) fs.copyFileSync(og, path.join(OUT, 'og.png'));
   const version = require('../package.json').version;
+  // The self-contained pages, with commands that follow the version in
+  // package.json. Their inline scripts are kept for the header CSP below.
+  const inlineScripts = [];
+  const selfContained = (dir) => {
+    fs.mkdirSync(path.join(OUT, dir), { recursive: true });
+    const src = path.join(__dirname, dir, 'index.html');
+    if (!fs.existsSync(src)) return;
+    const html = fs.readFileSync(src, 'utf8').split('__MCP_PIN_VERSION__').join(version);
+    fs.writeFileSync(path.join(OUT, dir, 'index.html'), html);
+    for (const m of html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)) inlineScripts.push(m[1]);
+  };
   // Spot the rug pull: a static, self-contained page with its own share image.
-  // Its demo command follows the version in package.json, like the install page.
-  fs.mkdirSync(path.join(OUT, 'spot'), { recursive: true });
-  const spot = path.join(__dirname, 'spot', 'index.html');
-  if (fs.existsSync(spot)) fs.writeFileSync(path.join(OUT, 'spot', 'index.html'), fs.readFileSync(spot, 'utf8').split('__MCP_PIN_VERSION__').join(version));
+  selfContained('spot');
   if (fs.existsSync(path.join(__dirname, 'spot', 'og.png'))) fs.copyFileSync(path.join(__dirname, 'spot', 'og.png'), path.join(OUT, 'spot', 'og.png'));
-  // Install page: one command, one-click buttons, and a generator for server
-  // authors. Its commands follow the version in package.json.
-  const install = path.join(__dirname, 'install', 'index.html');
-  if (fs.existsSync(install)) {
-    fs.mkdirSync(path.join(OUT, 'install'), { recursive: true });
-    fs.writeFileSync(path.join(OUT, 'install', 'index.html'), fs.readFileSync(install, 'utf8').split('__MCP_PIN_VERSION__').join(version));
-  }
+  // Install page: one command, one-click buttons, and a generator for server authors.
+  selfContained('install');
   // log.ndjson outgrew Cloudflare Pages' 25 MiB per-file limit on 5 Oct 2026 (26.4 MiB),
   // which failed every deploy. site/_redirects sends /log.ndjson and /head.json to the
   // same two files in the repository, so a verifier always gets a log and head from one commit.
@@ -561,7 +567,13 @@ ${reports.map((r) => `<div class="row"><div class="nm"><a href="/reports/${r.mon
   }
 
   // ------------------------------------------------- robots, sitemap, 404
-  fs.copyFileSync(path.join(__dirname, '_headers'), path.join(OUT, '_headers'));
+  // The header CSP allows exactly the inline scripts above, by hash, and no
+  // other inline script anywhere. Browsers hash the text with LF line endings.
+  const hashes = [...new Set(inlineScripts.map((s) =>
+    `'sha256-${crypto.createHash('sha256').update(s.replace(/\r\n?/g, '\n'), 'utf8').digest('base64')}'`))];
+  const headers = fs.readFileSync(path.join(__dirname, '_headers'), 'utf8');
+  if (!headers.includes('__INLINE_SCRIPT_HASHES__')) throw new Error('site/_headers: the CSP lost its __INLINE_SCRIPT_HASHES__ placeholder');
+  fs.writeFileSync(path.join(OUT, '_headers'), headers.split('__INLINE_SCRIPT_HASHES__').join(hashes.join(' ')));
   fs.copyFileSync(path.join(__dirname, '_redirects'), path.join(OUT, '_redirects'));
   fs.writeFileSync(path.join(OUT, 'robots.txt'),
     `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml\n`);
