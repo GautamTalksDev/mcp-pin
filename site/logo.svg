@@ -12,7 +12,9 @@
       <stop offset="1" stop-color="#7d8086"/>
     </linearGradient>
   </defs>
-  <path d="M32 41.5 L32 61.2" stroke="url(#steel)" stroke-width="2.4" stroke-linecap="round"/>
+  <!-- needle and collar as filled shapes: a gradient on a zero-width line is never painted -->
+  <path d="M30 42 H34 L32.7 60.4 Q32 62.6 31.3 60.4 Z" fill="url(#steel)"/>
+  <rect x="28.4" y="40.6" width="7.2" height="4" rx="1.6" fill="url(#steel)"/>
   <circle cx="32" cy="23.5" r="19.5" fill="url(#head)"/>
   <ellipse cx="25" cy="21" rx="5.6" ry="6.1" fill="#f5f1ea"/>
   <ellipse cx="39" cy="21" rx="5.6" ry="6.1" fill="#f5f1ea"/>
