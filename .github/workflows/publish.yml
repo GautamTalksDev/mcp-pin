@@ -41,3 +41,29 @@ jobs:
           # The registry checks the npm package's mcpName, and npm can take a few minutes to serve a new version.
           for i in 1 2 3 4 5 6 7 8; do ./mcp-publisher publish && exit 0; sleep 30; done
           exit 1
+
+  # A CycloneDX SBOM on every release, for security reviews. mcp-pin has no
+  # runtime dependencies, and the SBOM shows that in a form tools can read.
+  sbom:
+    needs: publish
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write    # attach the SBOM to the release
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+      - name: Write the SBOM
+        run: |
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm sbom --sbom-format cyclonedx --omit dev > "mcp-pin-${TAG}.cdx.json"
+          node -e 'const s=require(process.argv[1]); if ((s.components||[]).length) { console.error("unexpected runtime dependencies"); process.exit(1) }' "./mcp-pin-${TAG}.cdx.json"
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+      - name: Attach it to the release
+        run: gh release upload "$TAG" "mcp-pin-${TAG}.cdx.json" --clobber
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          GH_TOKEN: ${{ github.token }}

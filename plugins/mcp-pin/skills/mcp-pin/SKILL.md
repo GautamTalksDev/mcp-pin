@@ -17,10 +17,10 @@ mcp-pin pins the tool definitions (name, description, input schema, annotations)
 Call `mcp_pin_how_to_protect` with the app, or give them the one command that covers every app on this machine:
 
 ```bash
-npx -y mcp-pin@0.2.2 wrap
+npx -y mcp-pin@0.2.3 wrap
 ```
 
-It shows the plan, backs up each config file, and asks before writing. `npx -y mcp-pin@0.2.2 unwrap` undoes it. Let the user run it; do not run it for them without asking.
+It shows the plan, backs up each config file, and asks before writing. `npx -y mcp-pin@0.2.3 unwrap` undoes it. Let the user run it; do not run it for them without asking.
 
 ## When a server fails with "mcp-pin blocked"
 

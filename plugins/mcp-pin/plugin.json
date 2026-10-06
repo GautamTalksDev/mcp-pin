@@ -2,7 +2,7 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "mcp-pin",
   "description": "Know when an MCP server's tools change after you approved them: lookup tools, a skill, and a session-start note listing servers that run without mcp-pin.",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "author": {
     "name": "Gautam Khosla",
     "url": "https://github.com/GautamTalksDev"
