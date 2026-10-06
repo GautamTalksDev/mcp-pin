@@ -77,8 +77,8 @@ module.exports = function home(ctx) {
 
 <section class="scene" data-scene="manifesto" style="height:230svh" aria-label="The problem">
   <div class="stick"><div class="wrap">
-    <p class="eyebrow">The problem nobody re-checks</p>
-    <p class="manifesto">${words('Approving an MCP server happens once. What it says afterwards can change on any day. Every tool description lands in your AI as an instruction, and no major client asks you again when one *changes.* So the approval you gave in March still stands in September, over words you *never* *read.*')}</p>
+    <p class="eyebrow">The check most clients skip</p>
+    <p class="manifesto">${words('Approving an MCP server happens once. What it says afterwards can change on any day. Every tool description lands in your AI as an instruction, and most clients never ask you again when one *changes.* So the approval you gave in March still stands in September, over words you *never* *read.*')}</p>
   </div></div>
 </section>
 

@@ -2,7 +2,7 @@
 
 Know when an MCP server's tools change after you approved them.
 
-MCP tool descriptions are instructions to the model. A server can change them at any time after you approved it, and no major client asks you again. This plugin helps Claude check a server before you trust it, tells you which local servers run unprotected, and explains a block when [mcp-pin](https://github.com/GautamTalksDev/mcp-pin) stops a server whose definitions changed.
+MCP tool descriptions are instructions to the model. A server can change them at any time after you approved it, and most clients never ask you again. This plugin helps Claude check a server before you trust it, tells you which local servers run unprotected, and explains a block when [mcp-pin](https://github.com/GautamTalksDev/mcp-pin) stops a server whose definitions changed.
 
 ## What it adds
 

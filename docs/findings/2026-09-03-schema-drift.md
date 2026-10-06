@@ -27,6 +27,8 @@ If you are reviewing a release, you read the description diff. If you are a user
 
 And no MCP client re-prompts. Approval happens once. Nothing re-derives it.
 
+> **Correction, 6 October 2026:** that sentence was already wrong when this was written. Visual Studio 18.7, released 30 June 2026, compares a server's tools, prompts, resources and instructions with the last trusted version when the server starts, and asks before running it ([Visual Studio blog](https://devblogs.microsoft.com/visualstudio/visual-studio-june-update-track-your-usage-trust-your-tools/)). Most other clients still approve once.
+
 ## Where the 17 were
 
 | Server | Schema-only | Text | Added | Removed | Tools |

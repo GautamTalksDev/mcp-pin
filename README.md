@@ -30,7 +30,7 @@ You add an MCP server. Your client shows you a dialog. You read the tool descrip
 
 That decision is never revisited.
 
-The server can serve one set of tool definitions on Monday and a different set on Tuesday. Tool descriptions are not data that the model reads and sets aside. They are instructions that shape what the model does next, which means a changed description has the same reach as a changed system prompt. The MCP specification requires no integrity check, and no major client re-prompts when definitions change underneath an already approved server.
+The server can serve one set of tool definitions on Monday and a different set on Tuesday. Tool descriptions are not data that the model reads and sets aside. They are instructions that shape what the model does next, which means a changed description has the same reach as a changed system prompt. The MCP specification requires no integrity check, and most clients never re-prompt when definitions change underneath an already approved server. Visual Studio is the exception: since version 18.7 (June 2026) it compares a server's tools, prompts, resources and instructions with the last trusted version when the server starts, and asks before running it. mcp-pin does the same for the stdio servers in other clients, and keeps checking for the whole session.
 
 ```mermaid
 sequenceDiagram
