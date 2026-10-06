@@ -40,6 +40,9 @@ p a:hover,li a:hover,.link:hover{border-color:var(--ink)}
 .display{font:360 clamp(3.1rem,8.6vw,8.6rem)/.95 var(--serif);letter-spacing:-.035em;margin:0;font-optical-sizing:auto}
 .display em,.h2 em,.h3 em{font-style:italic;font-weight:330;color:var(--ink-2)}
 .h2{font:360 clamp(2.3rem,5.2vw,4.6rem)/1.02 var(--serif);letter-spacing:-.03em;margin:0 0 26px;font-optical-sizing:auto}
+/* no lonely last word in headlines, no one-word last line in paragraphs */
+.display,.h2,.h3,.tag{text-wrap:balance}
+.lede,.body,.card p{text-wrap:pretty}
 .h3{font:400 clamp(1.5rem,2.4vw,2.05rem)/1.15 var(--serif);letter-spacing:-.02em;margin:0 0 14px}
 .lede{font-size:clamp(1.12rem,1.5vw,1.36rem);line-height:1.55;color:var(--ink-2);max-width:56ch;margin:0}
 .body{color:var(--ink-2);max-width:62ch;margin:0 0 16px}
