@@ -312,6 +312,8 @@ What these controls compare is the configured command, not what it runs. That is
 ## Catch it in your own CI
 
 > **Experimental.** The GitHub Action is not part of the npm releases. Its bootstrap instructions currently reference a package that is not on npm, and the baseline does not survive the runner. Use the local proxy. Do not adopt the action in CI yet.
+>
+> **For a CI gate that works today**, commit an `mcp-pin.lock` and run `npx -y mcp-pin@0.2.0 lock --check` in any CI: it fails the build when a server's definitions or the contents of its locked package change. See [For teams](#for-teams-commit-an-mcp-pinlock).
 
 If you maintain an MCP server, the useful place to notice a definition change is the pull request that makes it.
 
