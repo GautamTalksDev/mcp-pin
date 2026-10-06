@@ -10,5 +10,8 @@
   "homepage": "https://mcp-pin.gautamkhosla.com",
   "repository": "https://github.com/GautamTalksDev/mcp-pin",
   "license": "MIT",
+  "privacyPolicyUrl": "https://github.com/GautamTalksDev/mcp-pin/blob/main/PRIVACY.md",
+  "supportUrl": "https://github.com/GautamTalksDev/mcp-pin/blob/main/SUPPORT.md",
+  "termsOfServiceUrl": "https://github.com/GautamTalksDev/mcp-pin/blob/main/LICENSE",
   "keywords": ["mcp", "security", "tool-poisoning", "rug-pull", "supply-chain"]
 }
