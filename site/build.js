@@ -52,11 +52,17 @@ const CSP = "default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-
 const version = (rel) => crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, 'ui', rel))).digest('hex').slice(0, 10);
 const V = { css: version('theme.css'), js: version('site.js') };
 const FILM = 'https://www.youtube.com/watch?v=tGtbDNr9qvE';
+// The logo and the tab icons carry a content hash too, so a new icon replaces a cached one.
+const hashOf = (f) => crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, f))).digest('hex').slice(0, 10);
+const LOGO = `/logo.svg?v=${hashOf('logo.svg')}`;
+const ICONS = `<link rel="icon" href="/favicon.ico?v=${hashOf('favicon.ico')}" sizes="32x32">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg?v=${hashOf('favicon.svg')}">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=${hashOf('apple-touch-icon.png')}">`;
 
 function nav(current) {
   const link = (href, label) => `<a href="${href}"${current === href ? ' aria-current="page"' : ''}>${label}</a>`;
   return `<nav class="nav" aria-label="Main"><div class="wrap">
-<a class="brand" href="/" aria-label="mcp-pin, home"><img src="/logo.svg" width="28" height="28" alt="">mcp-pin</a>
+<a class="brand" href="/" aria-label="mcp-pin, home"><img src="${LOGO}" width="28" height="28" alt="">mcp-pin</a>
 <div class="nav-links">${link('/#how', 'How it works')}${link('/log/', 'Public log')}${link('/reports/', 'Reports')}${link('/#teams', 'Teams')}${link(REPO, 'GitHub')}</div>
 <button class="menu" type="button" aria-expanded="false">Menu</button>
 <a class="btn btn-primary" href="/install/">Install</a>
@@ -66,7 +72,7 @@ function nav(current) {
 function footer() {
   return `<footer class="footer"><div class="wrap">
 <div class="cols">
-<div><a class="brand" href="/"><img src="/logo.svg" width="28" height="28" alt="">mcp-pin</a>
+<div><a class="brand" href="/"><img src="${LOGO}" width="28" height="28" alt="">mcp-pin</a>
 <p style="margin:18px 0 0;max-width:34ch">Pin what your agent approved. Block it when it changes.</p></div>
 <div><h4>Product</h4><ul><li><a href="/install/">Install</a></li><li><a href="/log/">Public log</a></li><li><a href="/reports/">Drift reports</a></li><li><a href="/spot/">Spot the rug pull</a></li></ul></div>
 <div><h4>Docs</h4><ul><li><a href="${REPO}#readme">README</a></li><li><a href="${REPO}/blob/main/docs/TOOL_DEFINITION_HASH.md">Tool definition hash</a></li><li><a href="${REPO}/blob/main/docs/VERIFYING.md">Verify the log</a></li><li><a href="${REPO}/blob/main/SECURITY.md">Security</a></li></ul></div>
@@ -89,7 +95,7 @@ function page(title, body, opts = {}) {
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(opts.desc || DESC)}">
 <link rel="canonical" href="${url}">
-<link rel="icon" type="image/svg+xml" href="/logo.svg">
+${ICONS}
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(opts.desc || DESC)}">
 <meta property="og:type" content="website">
@@ -178,7 +184,7 @@ function changeSummary(prev, cur) {
     const src = path.join(__dirname, d);
     if (fs.existsSync(src)) fs.cpSync(src, path.join(OUT, d), { recursive: true });
   }
-  fs.copyFileSync(path.join(__dirname, 'logo.svg'), path.join(OUT, 'logo.svg'));
+  for (const f of ['logo.svg', 'favicon.svg', 'favicon.ico', 'apple-touch-icon.png']) fs.copyFileSync(path.join(__dirname, f), path.join(OUT, f));
   const og = path.join(__dirname, 'og.png');
   if (fs.existsSync(og)) fs.copyFileSync(og, path.join(OUT, 'og.png'));
   const version = require('../package.json').version;
@@ -189,7 +195,8 @@ function changeSummary(prev, cur) {
     fs.mkdirSync(path.join(OUT, dir), { recursive: true });
     const src = path.join(__dirname, dir, 'index.html');
     if (!fs.existsSync(src)) return;
-    const html = fs.readFileSync(src, 'utf8').split('__MCP_PIN_VERSION__').join(version);
+    const html = fs.readFileSync(src, 'utf8').split('__MCP_PIN_VERSION__').join(version)
+      .replace('<link rel="icon" type="image/svg+xml" href="/logo.svg">', ICONS).split('src="/logo.svg"').join(`src="${LOGO}"`);
     fs.writeFileSync(path.join(OUT, dir, 'index.html'), html);
     for (const m of html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)) inlineScripts.push(m[1]);
   };

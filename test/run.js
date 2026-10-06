@@ -749,10 +749,27 @@ process.stdout.write('claude code plugin and install page\n');
     assert.ok(html.includes('__MCP_PIN_VERSION__'));
     assert.ok(fs.readFileSync(path.join(ROOT, 'site/build.js'), 'utf8').includes("split('__MCP_PIN_VERSION__')"));
   });
-  t('the site runs only scripts it lists, and no string reaches an HTML sink', () => {
+  let built = null;
+  const buildSite = () => {
+    if (built) return built;
     const out = tmp('mcp-pin-site-');
     const b = spawnSync(process.execPath, [path.join(ROOT, 'site/build.js'), '--data', path.join(ROOT, 'data'), '--out', out], { encoding: 'utf8', timeout: 120000 });
     assert.strictEqual(b.status, 0, b.stdout + b.stderr);
+    return (built = out);
+  };
+  t('every page carries the tab icons and logo, versioned so a new one replaces a cached one', () => {
+    const out = buildSite();
+    for (const p of ['index.html', 'log/index.html', 'install/index.html', 'spot/index.html']) {
+      const h = fs.readFileSync(path.join(out, p), 'utf8');
+      assert.match(h, /<link rel="icon" type="image\/svg\+xml" href="\/favicon\.svg\?v=[0-9a-f]{10}">/, p);
+      assert.match(h, /<link rel="icon" href="\/favicon\.ico\?v=[0-9a-f]{10}" sizes="32x32">/, p);
+      assert.match(h, /<link rel="apple-touch-icon" href="\/apple-touch-icon\.png\?v=[0-9a-f]{10}">/, p);
+      assert.ok(!/["(]\/logo\.svg["?)]/.test(h.replace(/\/logo\.svg\?v=[0-9a-f]{10}/g, '')), p + ' uses only the versioned logo');
+    }
+    for (const f of ['logo.svg', 'favicon.svg', 'favicon.ico', 'apple-touch-icon.png']) assert.ok(fs.statSync(path.join(out, f)).size > 0, f);
+  });
+  t('the site runs only scripts it lists, and no string reaches an HTML sink', () => {
+    const out = buildSite();
     const csp = /Content-Security-Policy: (.*)/.exec(fs.readFileSync(path.join(out, '_headers'), 'utf8'))[1];
     const scriptSrc = /script-src ([^;]*)/.exec(csp)[1].trim().split(/\s+/);
     assert.ok(!scriptSrc.some((s) => /unsafe|__/.test(s)), scriptSrc.join(' '));

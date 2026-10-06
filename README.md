@@ -10,6 +10,7 @@
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen.svg)](package.json)
 [![Listed on mcpservers.org](https://mcpservers.org/badge.svg)](https://mcpservers.org/servers/gautamtalksdev/mcp-pin)
+[![mcp-pin on Glama](https://glama.ai/mcp/servers/GautamTalksDev/mcp-pin/badges/score.svg)](https://glama.ai/mcp/servers/GautamTalksDev/mcp-pin)
 
 *A local proxy that blocks tool drift, and a public log that remembers every version.*
 

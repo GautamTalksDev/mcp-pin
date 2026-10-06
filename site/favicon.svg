@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Pin for browser tabs: a bigger head than logo.svg, so it fills the square at 16px, and a needle wide enough to show -->
+  <defs>
+    <radialGradient id="head" cx="36%" cy="30%" r="74%">
+      <stop offset="0" stop-color="#ff6a5c"/>
+      <stop offset=".42" stop-color="#d4271f"/>
+      <stop offset="1" stop-color="#6e0a0b"/>
+    </radialGradient>
+    <linearGradient id="steel" x1="0" x2="1">
+      <stop offset="0" stop-color="#8d9096"/>
+      <stop offset=".5" stop-color="#f1f2f4"/>
+      <stop offset="1" stop-color="#7d8086"/>
+    </linearGradient>
+  </defs>
+  <path d="M14.6 24.6 H17.4 L16.5 31 Q16 32.2 15.5 31 Z" fill="url(#steel)"/>
+  <rect x="13.4" y="23.2" width="5.2" height="2.6" rx="1.1" fill="url(#steel)"/>
+  <circle cx="16" cy="12.4" r="12.2" fill="url(#head)"/>
+  <ellipse cx="11.6" cy="10.9" rx="4" ry="4.4" fill="#f5f1ea"/>
+  <ellipse cx="20.4" cy="10.9" rx="4" ry="4.4" fill="#f5f1ea"/>
+  <circle cx="12.2" cy="11.7" r="2.25" fill="#120f0d"/>
+  <circle cx="21" cy="11.7" r="2.25" fill="#120f0d"/>
+  <circle cx="11.4" cy="10.7" r=".7" fill="#fff"/>
+  <circle cx="20.2" cy="10.7" r=".7" fill="#fff"/>
+  <ellipse cx="11.9" cy="4.6" rx="4" ry="1.6" fill="#fff" opacity=".22"/>
+</svg>
