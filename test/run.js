@@ -1451,7 +1451,7 @@ t('html special characters are escaped in server pages', () => {
     const client = path.join(__dirname, 'fake-client.js');
     const procs = [];
     for (let i = 0; i < n; i++) {
-      const env = Object.assign({}, process.env, { MCP_PIN_HOME: home });
+      const env = Object.assign({}, process.env, { MCP_PIN_HOME: home, FAKE_CLIENT_TIMEOUT_MS: '60000' });
       procs.push(new Promise((resolve) => {
         const p = spawn(process.execPath, [client, process.execPath, ATTEST, '--', process.execPath, srv, '--n=' + i], {
           env, stdio: ['ignore', 'pipe', 'pipe'],
@@ -1471,7 +1471,7 @@ t('html special characters are escaped in server pages', () => {
       ? fs.readFileSync(logFile, 'utf8').split('\n').filter((l) => l.trim())
       : [];
     t('concurrent pins persist every server', () => {
-      assert.strictEqual(pinFiles.length, n, 'pins.d count=' + pinFiles.length + ' results=' + results.map((r) => r.code).join(','));
+      assert.strictEqual(pinFiles.length, n, 'pins.d count=' + pinFiles.length + ' results=' + results.map((r) => r.code).join(',') + ' timeouts=' + results.filter((r) => /CLIENT TIMEOUT/.test(r.stderr)).length);
     });
     t('concurrent pins append every log entry', () => {
       assert.strictEqual(logLines.length, n, 'log lines=' + logLines.length);
