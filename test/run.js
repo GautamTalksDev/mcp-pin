@@ -724,6 +724,21 @@ process.stdout.write('claude code plugin and install page\n');
     ];
     for (const p of pins) assert.strictEqual(p, 'mcp-pin@' + v);
   });
+  t('the registry entry, the Gemini extension and the plugin follow the package version', () => {
+    const pkg = read('package.json');
+    const server = read('server.json');
+    const gemini = read('gemini-extension.json');
+    // The MCP Registry proves npm ownership by mcpName, and refuses a version the package does not have.
+    assert.strictEqual(pkg.mcpName, server.name);
+    assert.strictEqual(server.version, pkg.version);
+    assert.deepStrictEqual([server.packages[0].registryType, server.packages[0].identifier, server.packages[0].version], ['npm', pkg.name, pkg.version]);
+    assert.deepStrictEqual(server.packages[0].packageArguments.map((a) => a.value), ['lookup']);
+    assert.ok(server.description.length <= 100, 'the registry limits descriptions to 100 characters');
+    assert.strictEqual(gemini.version, pkg.version);
+    assert.deepStrictEqual(gemini.mcpServers['mcp-pin'].args, ['-y', 'mcp-pin@' + pkg.version, 'lookup']);
+    assert.ok(fs.existsSync(path.join(ROOT, gemini.contextFileName)));
+    assert.strictEqual(read('plugins/mcp-pin/.claude-plugin/plugin.json').version, pkg.version);
+  });
   t('the skill has the frontmatter agents need', () => {
     const md = fs.readFileSync(path.join(ROOT, 'plugins/mcp-pin/skills/mcp-pin/SKILL.md'), 'utf8');
     assert.match(md, /^---\nname: mcp-pin\ndescription: .{80,}\n---\n/);

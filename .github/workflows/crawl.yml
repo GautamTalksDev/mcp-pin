@@ -16,11 +16,11 @@ jobs:
     timeout-minutes: 180
     permissions: { contents: read }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with: { node-version: '20' }
 
       # Untrusted npm packages. This job must never see LOG_PRIVATE_KEY.
@@ -31,7 +31,7 @@ jobs:
         timeout-minutes: 100
         run: node crawler/crawl.js --allow-exec --concurrency 3 --delay-ms 200 --limit 600
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: crawl-data
           path: |
@@ -52,12 +52,12 @@ jobs:
     timeout-minutes: 30
     permissions: { contents: write }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with: { node-version: '20' }
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: crawl-data
           path: data
@@ -125,5 +125,5 @@ jobs:
           done
           exit 1
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with: { name: site, path: public, retention-days: 30 }

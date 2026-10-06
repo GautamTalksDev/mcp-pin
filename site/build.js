@@ -511,6 +511,14 @@ For anything you would rather not discuss in public, my contact details are on m
     ['wording', 'changed wording only'],
   ];
   const monthName = (m) => `${MONTHS_LONG[Number(m.slice(5, 7)) - 1]} ${m.slice(0, 4)}`;
+  // Corrections to a published report. The report's JSON stays as it was counted; the page says what it got wrong.
+  const REPORT_CORRECTIONS = {
+    '2026-09': 'Correction, 6 October 2026: 9 of the 22 servers counted here did not change their definitions themselves. ' +
+      'Five are differences between our first run, made locally on 2 September, and the first CI crawl on 3 September, which ran in a different environment: ' +
+      'firecrawl-mcp, context-mode, @ironbee-ai/devtools, mcp-searxng and dataforseo-mcp-server. ' +
+      'Four list different definitions on every launch (a reordered list, a live count, a fresh login link, text fetched at start): ' +
+      'notion-mcp-server, agent402-mcp, @nordsym/apiclaw and @cloudbase/cloudbase-mcp. The other 13 changed alongside a new npm release.',
+  };
   const reports = (() => {
     try { return fs.readdirSync(path.join(DATA, 'reports')).filter((f) => /^\d{4}-\d{2}\.json$/.test(f)).sort().reverse(); } catch { return []; }
   })().map((f) => JSON.parse(fs.readFileSync(path.join(DATA, 'reports', f), 'utf8')));
@@ -544,6 +552,7 @@ For anything you would rather not discuss in public, my contact details are on m
   <p class="lede">${r.partial ? '<strong>Month in progress.</strong> ' : ''}What changed in the definitions of the MCP servers this log tracks,
   counted from the signed public log on ${esc(longDate(r.generated_at))}. Every number here can be checked:
   <a href="/reports/${r.month}.json">the report as JSON</a>, and the log it was counted from.</p>
+  ${REPORT_CORRECTIONS[r.month] ? `<p class="note">${esc(REPORT_CORRECTIONS[r.month])}</p>` : ''}
 </div></div>
 <div class="wrap"><div class="facts">
   <div class="fact"><b>${ch.servers}</b><span>servers changed their tool definitions</span></div>
@@ -569,7 +578,7 @@ For anything you would rather not discuss in public, my contact details are on m
 <main id="main">
 ${head('Drift reports', 'What changed,<br><em>month by month.</em>', 'How many MCP servers changed what their tools tell the model, and what kind of change it was, counted from the signed public log.')}
 <div class="wrap"><section class="doc">
-${reports.map((r) => `<div class="row"><div class="nm"><a href="/reports/${r.month}.html">${esc(monthName(r.month))}${r.partial ? ' (in progress)' : ''}</a></div><div class="right"><div class="meta">${r.changes.servers} of ${r.coverage.tracked} servers changed</div></div></div>`).join('\n')}
+${reports.map((r) => `<div class="row"><div class="nm"><a href="/reports/${r.month}.html">${esc(monthName(r.month))}${r.partial ? ' (in progress)' : ''}</a></div><div class="right"><div class="meta">${r.changes.servers} of ${r.coverage.tracked} servers changed${REPORT_CORRECTIONS[r.month] ? ' (corrected on the page)' : ''}</div></div></div>`).join('\n')}
 </section></div></main>`, { desc: 'Monthly reports on how MCP tool definitions change, from a signed public log.', path: '/reports/' }));
   }
 

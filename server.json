@@ -1,0 +1,30 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.GautamTalksDev/mcp-pin",
+  "title": "mcp-pin",
+  "description": "Check if an MCP server's tool definitions changed after approval, from a signed public log.",
+  "repository": {
+    "url": "https://github.com/GautamTalksDev/mcp-pin",
+    "source": "github"
+  },
+  "websiteUrl": "https://mcp-pin.gautamkhosla.com",
+  "version": "0.2.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "mcp-pin",
+      "version": "0.2.1",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "lookup",
+          "description": "Run mcp-pin as an MCP server with four read-only lookup tools."
+        }
+      ]
+    }
+  ]
+}
