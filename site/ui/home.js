@@ -59,7 +59,7 @@ module.exports = function home(ctx) {
     </video>
   </div>
   <div class="wrap">
-    <a class="tag fade-up" href="#teams"><b>New</b> 0.2.0: team locks, package pinning, admin policy</a>
+    <a class="tag fade-up" href="/log/"><b>New</b> 0.2.3: Playwright, GitHub and the most-used MCP servers join the public log</a>
     <h1 class="display rise"><span><span>You approved it once.</span></span><span><span><em>Then it changed.</em></span></span></h1>
     <p class="lede fade-up d1">mcp-pin remembers exactly what every MCP server told your AI on the day you said yes, and stops the session the moment that changes. On your machine, with no model in the loop.</p>
     <div class="btns fade-up d2">
