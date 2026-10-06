@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2
+
+- The GitHub Action's description is under 125 characters, so the Action can be published to the GitHub Marketplace.
+- `PRIVACY.md` says what mcp-pin reads, stores and sends: no accounts, no telemetry, and only the network requests it lists. The plugin manifest links it, along with `SUPPORT.md` and the license, for Anthropic's plugin directory.
+- The plugin has an icon for Anthropic's plugin directory.
+
 ## 0.2.1
 
 ### Easier to find

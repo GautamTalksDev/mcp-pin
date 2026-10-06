@@ -1,11 +1,11 @@
 {
   "name": "mcp-pin",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Know when an MCP server's tools change after you approved them: check public servers against mcp-pin's signed log, and see what your pinned servers changed.",
   "mcpServers": {
     "mcp-pin": {
       "command": "npx",
-      "args": ["-y", "mcp-pin@0.2.1", "lookup"]
+      "args": ["-y", "mcp-pin@0.2.2", "lookup"]
     }
   },
   "contextFileName": "GEMINI.md"

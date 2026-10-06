@@ -2,7 +2,7 @@
   "mcpServers": {
     "mcp-pin": {
       "command": "npx",
-      "args": ["-y", "mcp-pin@0.2.1", "lookup"]
+      "args": ["-y", "mcp-pin@0.2.2", "lookup"]
     }
   }
 }

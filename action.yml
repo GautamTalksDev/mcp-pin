@@ -1,5 +1,5 @@
 name: 'mcp-pin'
-description: 'Catch changes to your MCP server tool definitions in a pull request, including schema changes that leave the description untouched.'
+description: 'Catch MCP tool definition changes in pull requests, including schema changes that leave the description untouched.'
 author: 'Gautam Khosla'
 branding:
   icon: 'anchor'

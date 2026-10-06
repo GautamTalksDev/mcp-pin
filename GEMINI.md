@@ -9,4 +9,4 @@ MCP tool descriptions are instructions to the model, and a server can change the
 
 Approving a change is always the user's decision. Never run `mcp-pin approve` for them.
 
-To protect the MCP servers configured in Gemini CLI, the user can run `npx -y mcp-pin@0.2.1 wrap`, which shows its plan and asks before it changes anything. Source and documentation: https://github.com/GautamTalksDev/mcp-pin
+To protect the MCP servers configured in Gemini CLI, the user can run `npx -y mcp-pin@0.2.2 wrap`, which shows its plan and asks before it changes anything. Source and documentation: https://github.com/GautamTalksDev/mcp-pin
