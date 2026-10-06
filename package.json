@@ -1,6 +1,7 @@
 {
   "name": "mcp-pin",
-  "version": "0.2.0",
+  "version": "0.2.1",
+  "mcpName": "io.github.GautamTalksDev/mcp-pin",
   "description": "Tool-integrity pinning for MCP. Pin what your agent approved; block it when it changes.",
   "bin": {
     "mcp-pin": "bin/attest.js"
@@ -31,7 +32,10 @@
     "model-context-protocol",
     "security",
     "tool-poisoning",
-    "supply-chain"
+    "supply-chain",
+    "mcp-server",
+    "mcp-security",
+    "rug-pull"
   ],
   "scripts": {
     "test": "node test/run.js",

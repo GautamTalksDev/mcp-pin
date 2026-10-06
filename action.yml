@@ -43,5 +43,5 @@ outputs:
     description: 'Tools whose schema or annotations moved while the description stayed identical.'
 
 runs:
-  using: 'node20'
+  using: 'node24'
   main: 'action/index.js'

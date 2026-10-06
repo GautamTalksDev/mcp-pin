@@ -1,5 +1,6 @@
 # Publish to npm with provenance, so anyone can verify the tarball was built
-# from this repo at this commit rather than uploaded from a laptop.
+# from this repo at this commit rather than uploaded from a laptop. Then list
+# the same version in the official MCP Registry.
 name: publish
 on:
   release:
@@ -7,16 +8,36 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-  id-token: write        # OIDC identity for npm Trusted Publishing + provenance
+  id-token: write        # OIDC identity for npm Trusted Publishing + provenance, and the MCP Registry
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
       - run: node test/run.js
       - run: npm install -g npm@11
       - run: npm --version
       - run: npm publish --provenance --access public
+
+  # A job of its own, so a registry hiccup can be re-run without publishing to npm again.
+  registry:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Install mcp-publisher 1.8.1, checksum verified
+        run: |
+          base=https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1
+          curl -fsSLO "$base/mcp-publisher_linux_amd64.tar.gz"
+          curl -fsSLO "$base/registry_1.8.1_checksums.txt"
+          grep ' mcp-publisher_linux_amd64.tar.gz$' registry_1.8.1_checksums.txt | sha256sum -c -
+          tar xzf mcp-publisher_linux_amd64.tar.gz mcp-publisher
+      - name: Publish server.json to the MCP Registry
+        run: |
+          ./mcp-publisher login github-oidc
+          # The registry checks the npm package's mcpName, and npm can take a few minutes to serve a new version.
+          for i in 1 2 3 4 5 6 7 8; do ./mcp-publisher publish && exit 0; sleep 30; done
+          exit 1

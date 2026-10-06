@@ -77,8 +77,8 @@ module.exports = function home(ctx) {
 
 <section class="scene" data-scene="manifesto" style="height:230svh" aria-label="The problem">
   <div class="stick"><div class="wrap">
-    <p class="eyebrow">The problem nobody re-checks</p>
-    <p class="manifesto">${words('Approving an MCP server happens once. What it says afterwards can change on any day. Every tool description lands in your AI as an instruction, and no major client asks you again when one *changes.* So the approval you gave in March still stands in September, over words you *never* *read.*')}</p>
+    <p class="eyebrow">The check most clients skip</p>
+    <p class="manifesto">${words('Approving an MCP server happens once. What it says afterwards can change on any day. Every tool description lands in your AI as an instruction, and most clients never ask you again when one *changes.* So the approval you gave in March still stands in September, over words you *never* *read.*')}</p>
   </div></div>
 </section>
 
@@ -189,6 +189,7 @@ module.exports = function home(ctx) {
   <div class="wrap">
     <p class="eyebrow" data-reveal>For teams and companies</p>
     <h2 class="h2" data-reveal>Approved in review.<br><em>Enforced everywhere.</em></h2>
+    <p class="lede" data-reveal>The official MCP security guide says to <a class="link" href="https://modelcontextprotocol.io/docs/tutorials/security/local-server-security">prefer clients that pin tool definitions</a>. Uber requires an owner-approved diff for <a class="link" href="https://www.uber.com/blog/designing-mcp-gateway/">every tool description change</a>, and Microsoft <a class="link" href="https://www.microsoft.com/insidetrack/blog/protecting-ai-conversations-at-microsoft-with-model-context-protocol-security-and-governance/">pauses risky actions</a> when tool metadata changes after approval. Both built it in-house. Your admin allowlist approves the command; mcp-pin approves what it serves.</p>
     <div class="grid" style="margin-top:54px">
       <article class="card" data-reveal><span class="k">mcp-pin.lock</span><h3 class="h3">Commit what you approved.</h3><p>Every definition as readable JSON, so the pull request that updates the lock shows exactly what a server now tells the model.</p><a class="go link" href="${REPO}#for-teams-commit-an-mcp-pinlock">How it works →</a></article>
       <article class="card" data-reveal style="--i:1"><span class="k">package pinning</span><h3 class="h3">The version you reviewed runs.</h3><p>Not whatever is newest. postmark-mcp 1.0.16 changed its code in September 2025, not its tools. The lock holds the version.</p><a class="go link" href="${REPO}#the-package-behind-the-definitions">Read more →</a></article>

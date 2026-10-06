@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.2.1
+
+### Easier to find
+
+- **The official MCP Registry.** mcp-pin is published as `io.github.GautamTalksDev/mcp-pin`: `package.json` carries the matching `mcpName`, `server.json` describes the lookup server, and every release publishes it from GitHub Actions (OIDC login, a checksum-verified `mcp-publisher`). Directories that follow the registry pick it up from there.
+- **A Gemini CLI extension.** `gemini-extension.json` and `GEMINI.md` at the root add the lookup tools to Gemini CLI.
+- **The Claude Code plugin** has a README that lists everything it runs, reads and sends, which Anthropic's plugin directory requires and scans for.
+
+### Fixes
+
+- Badges escape quotes too, since their text also sits in an `aria-label` attribute.
+- The GitHub Action runs on Node 24. GitHub retired Node 20 for Actions on 23 September 2026.
+- The site, the README and the plugin README said no major client asks again when tool definitions change. Visual Studio 18.7 (30 June 2026) does, at server start, so they now say most clients never ask again and name the exception.
+
+### Supply chain
+
+- Every action in the workflows is pinned to a commit.
+- OpenSSF Scorecard runs weekly and publishes its results.
+- `SUPPORT.md` says what support to expect, which versions get fixes, and what you keep if the project stops.
+
+### A correction to 0.2.0
+
+0.2.0's notes said the first report, September 2026, found 22 of 254 servers changed their tool definitions. 9 of those 22 did not change their definitions themselves: 5 are differences between the first local run (2 September) and the first CI crawl (3 September), which ran in a different environment, and 4 list different definitions on every launch. The other 13 changed alongside a new npm release. The report page now says so.
+
 ## 0.2.0
 
 ### A server could show the check one toolset and the client another

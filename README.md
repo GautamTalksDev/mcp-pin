@@ -30,7 +30,7 @@ You add an MCP server. Your client shows you a dialog. You read the tool descrip
 
 That decision is never revisited.
 
-The server can serve one set of tool definitions on Monday and a different set on Tuesday. Tool descriptions are not data that the model reads and sets aside. They are instructions that shape what the model does next, which means a changed description has the same reach as a changed system prompt. The MCP specification requires no integrity check, and no major client re-prompts when definitions change underneath an already approved server.
+The server can serve one set of tool definitions on Monday and a different set on Tuesday. Tool descriptions are not data that the model reads and sets aside. They are instructions that shape what the model does next, which means a changed description has the same reach as a changed system prompt. The MCP specification requires no integrity check, and most clients never re-prompt when definitions change underneath an already approved server. Visual Studio is the exception: since version 18.7 (June 2026) it compares a server's tools, prompts, resources and instructions with the last trusted version when the server starts, and asks before running it. mcp-pin does the same for the stdio servers in other clients, and keeps checking for the whole session.
 
 ```mermaid
 sequenceDiagram
@@ -114,7 +114,7 @@ It lives in the README so it cannot be quietly renegotiated later.
 ## Protect every server in one command
 
 ```bash
-npx --yes mcp-pin@0.2.0 wrap
+npx --yes mcp-pin@0.2.1 wrap
 ```
 
 It finds the MCP servers configured in Claude Desktop, Claude Code, Cursor, VS Code, Gemini CLI, Devin Desktop, Windsurf, Cline and Codex, shows you what it will change, backs up each file to `~/.mcp-pin/backups`, and puts mcp-pin in front of every local server. Remote (URL) servers are left as they are, because the proxy speaks stdio only. Running it twice changes nothing; `mcp-pin unwrap` takes it out again. Restart the apps afterwards. Another app's config: `mcp-pin wrap --config <file>`. A project's shared `.mcp.json` is only touched with `--project`, because teammates use it too.
@@ -139,7 +139,7 @@ mcp-pin is also an MCP server. Add it like any other and your agent can check a 
 ```json
 {
   "mcpServers": {
-    "mcp-pin": { "command": "npx", "args": ["-y", "mcp-pin@0.2.0", "lookup"] }
+    "mcp-pin": { "command": "npx", "args": ["-y", "mcp-pin@0.2.1", "lookup"] }
   }
 }
 ```
@@ -257,14 +257,14 @@ The exact recipe is an open spec, [the tool definition hash](docs/TOOL_DEFINITIO
 A pin on one laptop protects one person, from whatever that laptop saw first. A team that shares a `.mcp.json` can commit what it approved instead, and review every change to it like a dependency update.
 
 ```bash
-npx --yes mcp-pin@0.2.0 lock
-npx --yes mcp-pin@0.2.0 wrap --project --lock mcp-pin.lock
+npx --yes mcp-pin@0.2.1 lock
+npx --yes mcp-pin@0.2.1 wrap --project --lock mcp-pin.lock
 ```
 
 The first command starts each local server in `.mcp.json`, reads what the model would read (tools, prompts and the server's instructions), stops it, and writes `mcp-pin.lock`. No tool is called. Every definition is stored as readable JSON, so the pull request that updates the lock shows exactly what a server now tells the model. The second puts the proxy in front of each server in the shared config, pointed at the lock:
 
 ```json
-"args": ["-y", "mcp-pin@0.2.0", "--lock", "mcp-pin.lock", "--name", "files", "--", "npx", "-y", "@modelcontextprotocol/server-filesystem", "."]
+"args": ["-y", "mcp-pin@0.2.1", "--lock", "mcp-pin.lock", "--name", "files", "--", "npx", "-y", "@modelcontextprotocol/server-filesystem", "."]
 ```
 
 Commit both files. From then on a server that differs from the lock is blocked on every teammate's machine, on the first run too, before anything is forwarded, and for the whole session. A lock that is missing, unreadable or edited by hand so it no longer matches its own hashes stops the server instead of falling back. A relative lock path is read from the folder the client starts the server in; if yours starts servers somewhere else, use an absolute path.
@@ -292,8 +292,8 @@ A published npm version or PyPI file cannot be replaced, so the version carries 
 Write the approved servers in one config file, lock them, and generate the policy for the AI tools your organisation uses:
 
 ```bash
-npx --yes mcp-pin@0.2.0 lock --config approved.json --out mcp-pin.lock
-npx --yes mcp-pin@0.2.0 policy all --config approved.json --lock /etc/mcp-pin/mcp-pin.lock
+npx --yes mcp-pin@0.2.1 lock --config approved.json --out mcp-pin.lock
+npx --yes mcp-pin@0.2.1 policy all --config approved.json --lock /etc/mcp-pin/mcp-pin.lock
 ```
 
 That writes, under `mcp-pin-policy/`, a policy for each product in which every approved local server runs through mcp-pin, pinned to the organisation's lock with `--only-locked`, so a server the lock does not list does not start. Deploy the lock to that path on every machine, and the policy files with your device management. Nothing is installed by the command.
@@ -303,7 +303,7 @@ That writes, under `mcp-pin-policy/`, a policy for each product in which every a
 | Claude Code | `managed-mcp.json` (a fixed set) or `managed-settings.json` (an approved catalog, `allowManagedMcpServersOnly`) | Only these exact wrapped commands run. Commands match exactly, every argument in order. |
 | GitHub Copilot, and VS Code | `managed-settings.json` | The same, in Copilot CLI, VS Code, JetBrains and the Copilot app. Not the Copilot cloud agent, which has only an on/off policy. VS Code does not yet enforce the list in Agent Host sessions (microsoft/vscode issue 328241). |
 | Codex | `requirements.toml` and a matching `config.toml` | A server runs only if its name and every argument of its wrapped command match. Secrets are forwarded by name with `env_vars`, never written into the file. |
-| Cursor | `cursor-dashboard.txt` to copy into Team Settings | One wildcard entry, `*npx -y mcp-pin@0.2.0 --lock ... --only-locked --name * -- *`, requires the wrapper for every server; with the lock it is also the approved catalog. Enterprise plan; turn off User MCP extensions. |
+| Cursor | `cursor-dashboard.txt` to copy into Team Settings | One wildcard entry, `*npx -y mcp-pin@0.2.1 --lock ... --only-locked --name * -- *`, requires the wrapper for every server; with the lock it is also the approved catalog. Enterprise plan; turn off User MCP extensions. |
 
 What these controls compare is the configured command, not what it runs. That is why the lock matters: the policy makes every server go through mcp-pin, and mcp-pin checks the definitions and the package version against what the organisation approved. Because the matching is exact, regenerate the policy when the approved list or the mcp-pin version changes. Remote (HTTP) servers are listed by URL; mcp-pin cannot sit in front of them yet. Checked against each vendor's documentation on 5 October 2026.
 
@@ -312,6 +312,8 @@ What these controls compare is the configured command, not what it runs. That is
 ## Catch it in your own CI
 
 > **Experimental.** The GitHub Action is not part of the npm releases. Its bootstrap instructions currently reference a package that is not on npm, and the baseline does not survive the runner. Use the local proxy. Do not adopt the action in CI yet.
+>
+> **For a CI gate that works today**, commit an `mcp-pin.lock` and run `npx -y mcp-pin@0.2.1 lock --check` in any CI: it fails the build when a server's definitions or the contents of its locked package change. See [For teams](#for-teams-commit-an-mcp-pinlock).
 
 If you maintain an MCP server, the useful place to notice a definition change is the pull request that makes it.
 
