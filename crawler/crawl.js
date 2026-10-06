@@ -178,6 +178,9 @@ function saveState(s) {
     log_verified: verified,
   };
   fs.writeFileSync(path.join(DATA, 'last-crawl.json'), JSON.stringify(summary, null, 2));
+  // Every run, so a report can say which days were looked at and which were not.
+  const { log_verified, ...run } = summary;
+  fs.appendFileSync(path.join(DATA, 'crawls.ndjson'), JSON.stringify(run) + '\n');
   process.stderr.write(JSON.stringify(summary, null, 2) + '\n');
 
   // Probed servers are untrusted third-party processes. Some of them leave

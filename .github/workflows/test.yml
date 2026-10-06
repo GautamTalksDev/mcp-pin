@@ -13,3 +13,6 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '${{ matrix.node }}' }
       - run: node test/run.js
+      # The tool definition hash, checked by a second, independent implementation.
+      - if: matrix.os == 'ubuntu-latest'
+        run: python3 docs/tool_definition_hash.py

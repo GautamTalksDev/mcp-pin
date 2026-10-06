@@ -14,19 +14,24 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="https://mcp-pin.gautamkhosla.com/spot/">
 <link rel="icon" type="image/svg+xml" href="/logo.svg">
+<meta name="theme-color" content="#0b0a09">
 <style>
+/* The site's design system: one dark stage, one red. Keep is brass (approved), Block is seal red. */
+@font-face{font-family:"Fraunces";src:url(/fonts/fraunces.woff) format("woff");font-weight:300 700;font-display:swap}
+@font-face{font-family:"Fraunces";src:url(/fonts/fraunces-italic.woff) format("woff");font-weight:300 700;font-style:italic;font-display:swap}
+@font-face{font-family:"Hanken Grotesk";src:url(/fonts/hanken.woff) format("woff");font-weight:100 900;font-display:swap}
+@font-face{font-family:"IBM Plex Mono";src:url(/fonts/plexmono.woff) format("woff");font-weight:400;font-display:swap}
 :root{
-  --ink:#16181d; --ink-2:#5b6472; --paper:#fbfbfa; --card:#ffffff; --rule:#e4e7ec;
-  --code:#0d1117; --code-fg:#e6edf3; --code-dim:#8b949e; --code-rule:#2b3138;
-  --grn:#1a7f37; --grn-bg:rgba(46,160,67,.16); --red:#cf222e; --red-bg:rgba(248,81,73,.18);
-  --amb:#9a6700; --brass:#b08a3e;
-  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
-  --sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+  --ink:#f3ede2; --ink-2:#c9c1b4; --paper:#0b0a09; --card:#17140f; --rule:rgba(243,237,226,.13);
+  --code:#0e0c0a; --code-fg:#f3ede2; --code-dim:#958c80; --code-rule:rgba(243,237,226,.10);
+  --grn:#cba56a; --grn-bg:rgba(159,211,166,.14); --red:#ff5c4f; --red-bg:rgba(255,92,79,.16);
+  --amb:#e5a84d; --brass:#cba56a;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:"Hanken Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --serif:"Fraunces",Georgia,serif;
+  color-scheme:dark;
 }
-@media (prefers-color-scheme: dark){
-  :root{ --ink:#e6edf3; --ink-2:#a3adba; --paper:#0b0e13; --card:#141922; --rule:#2b3138;
-    --code:#0f141b; --grn:#3fb950; --red:#f85149; --amb:#d29922; --brass:#d4b06a; }
-}
+::selection{background:#d4271f;color:#fff}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
@@ -36,8 +41,8 @@ a{color:inherit}
 header{display:flex;align-items:center;gap:10px;padding:18px 0;font-size:15px;color:var(--ink-2)}
 header a{text-decoration:none;border-bottom:1px solid var(--rule)}
 header .sp{flex:1}
-h1{font-size:clamp(38px,8vw,72px);line-height:1.02;letter-spacing:-.02em;margin:28px 0 14px;font-weight:700}
-h1 em{font-style:normal;color:var(--red)}
+h1{font:360 clamp(42px,8.4vw,86px)/.98 var(--serif);letter-spacing:-.035em;margin:34px 0 18px}
+h1 em{font-style:italic;color:var(--red)}
 .lede{font-size:clamp(18px,2.4vw,21px);color:var(--ink-2);max-width:40ch;margin:0 0 26px}
 .btn{appearance:none;border:0;border-radius:12px;font:600 18px/1 var(--sans);padding:17px 26px;cursor:pointer;
   transition:transform .08s ease, filter .15s ease;touch-action:manipulation}
@@ -45,7 +50,8 @@ h1 em{font-style:normal;color:var(--red)}
 .btn:focus-visible{outline:3px solid var(--brass);outline-offset:3px}
 .go{background:var(--ink);color:var(--paper)}
 .keep{background:var(--grn);color:#fff}
-.block{background:var(--red);color:#fff}
+.block{background:#d4271f;color:#fff}
+.keep{color:#0b0a09}
 .ghost{background:transparent;color:var(--ink);border:1.5px solid var(--rule)}
 .small{font-size:14px;color:var(--ink-2)}
 .facts{display:flex;flex-wrap:wrap;gap:8px 18px;margin:22px 0 0;font-size:15px;color:var(--ink-2)}
@@ -60,7 +66,7 @@ h1 em{font-style:normal;color:var(--red)}
 .timer{height:6px;border-radius:6px;background:var(--rule);overflow:hidden;margin:0 0 16px}
 .timer b{display:block;height:100%;width:100%;background:var(--brass);transform-origin:left center}
 .timer b.late{background:var(--red)}
-.ask{font-size:clamp(20px,3vw,26px);font-weight:650;margin:0 0 14px;letter-spacing:-.01em}
+.ask{font:400 clamp(22px,3vw,30px)/1.25 var(--serif);margin:0 0 16px;letter-spacing:-.015em}
 .ask code{font:600 .9em var(--mono);background:var(--card);border:1px solid var(--rule);border-radius:6px;padding:1px 7px}
 .panes{display:grid;grid-template-columns:1fr;gap:12px}
 @media(min-width:760px){.panes{grid-template-columns:1fr 1fr}}
@@ -69,7 +75,7 @@ h1 em{font-style:normal;color:var(--red)}
   color:var(--code-dim);border-bottom:1px solid var(--code-rule);display:flex;justify-content:space-between}
 .pane pre{margin:0;padding:14px;font:14px/1.6 var(--mono);white-space:pre-wrap;word-break:break-word;min-height:150px}
 .k{color:#79c0ff} .s{color:#a5d6ff} .p{color:#d2a8ff} .d{color:var(--code-dim)}
-ins{text-decoration:none;background:var(--grn-bg);color:#7ee787;border-radius:3px;padding:0 1px}
+ins{text-decoration:none;background:var(--grn-bg);color:#9fd3a6;border-radius:3px;padding:0 1px}
 del{text-decoration:line-through;background:var(--red-bg);color:#ffa198;border-radius:3px;padding:0 1px}
 .choose{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0 6px}
 .choose .btn{width:100%;padding:19px 10px}
@@ -82,7 +88,7 @@ del{text-decoration:line-through;background:var(--red-bg);color:#ffa198;border-r
 .next{width:100%;margin:6px 0 30px}
 
 /* end */
-.score{font-size:clamp(44px,9vw,84px);font-weight:750;letter-spacing:-.03em;line-height:1;margin:26px 0 8px}
+.score{font:360 clamp(48px,9vw,96px)/1 var(--serif);letter-spacing:-.04em;margin:26px 0 8px}
 .score small{font-size:.4em;color:var(--ink-2);font-weight:600;letter-spacing:0}
 .vs{display:grid;grid-template-columns:1fr;gap:12px;margin:22px 0}
 @media(min-width:760px){.vs{grid-template-columns:1fr 1fr}}
@@ -160,7 +166,7 @@ footer{border-top:1px solid var(--rule);padding:18px 0 40px;font-size:14px;color
     <button class="btn ghost" id="again" type="button">Play again</button>
   </div>
   <p class="small" style="margin:22px 0 4px">See the real thing block a changed tool, in about ten seconds:</p>
-  <div class="cmd"><span id="democmd">npx --yes mcp-pin@0.1.4 demo</span><button type="button" id="copycmd">copy</button></div>
+  <div class="cmd"><span id="democmd">npx -y mcp-pin@__MCP_PIN_VERSION__ demo</span><button type="button" id="copycmd">copy</button></div>
   <div class="more">
     <a href="https://www.youtube.com/watch?v=tGtbDNr9qvE"><b>Watch the film</b><span>The AI tool you approved is not the one running now. 7 minutes.</span></a>
     <a href="https://github.com/GautamTalksDev/mcp-pin"><b>mcp-pin on GitHub</b><span>The proxy, the public log, and the bug I shipped in the first version.</span></a>
@@ -292,6 +298,12 @@ Made by <a href="https://github.com/GautamTalksDev">Gautam Khosla</a> for <a hre
   var $ = function (id) { return document.getElementById(id); };
   var order = [], idx = 0, answers = [], timer = null, t0 = 0, locked = false;
 
+  // Every HTML string on this page is built from the rounds above and escaped
+  // by esc(). The site's CSP enforces Trusted Types, so this one named policy
+  // is the only way a string can become HTML here; anything else is refused.
+  var policy = window.trustedTypes && window.trustedTypes.createPolicy('spot', { createHTML: function (s) { return s; } });
+  function setHtml(el, html) { el.innerHTML = policy ? policy.createHTML(html) : html; }
+
   function shuffle(a) {
     for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
     return a;
@@ -310,11 +322,11 @@ Made by <a href="https://github.com/GautamTalksDev">Gautam Khosla</a> for <a hre
   }
 
   function dots() {
-    $('dots').innerHTML = order.map(function (_, i) {
+    setHtml($('dots'), order.map(function (_, i) {
       var a = answers[i];
       var c = i === idx && !a ? 'now' : a ? (a.right ? 'ok' : 'no') : '';
       return '<i class="' + c + '"></i>';
-    }).join('');
+    }).join(''));
   }
 
   function round() {
@@ -322,8 +334,8 @@ Made by <a href="https://github.com/GautamTalksDev">Gautam Khosla</a> for <a hre
     locked = false;
     $('count').textContent = (idx + 1) + ' / ' + order.length;
     $('toolname').textContent = r.a.name;
-    $('before').innerHTML = render(r.a);
-    $('after').innerHTML = render(today(r));
+    setHtml($('before'), render(r.a));
+    setHtml($('after'), render(today(r)));
     $('verdict').hidden = true; $('next').hidden = true;
     $('choose').hidden = false; $('keys').hidden = false;
     dots();
@@ -349,17 +361,17 @@ Made by <a href="https://github.com/GautamTalksDev">Gautam Khosla</a> for <a hre
     var right = choice === correct;
     answers[idx] = { round: r, choice: choice, right: right, timedOut: !!timedOut };
     var d = renderDiff(r.a, today(r));
-    $('before').innerHTML = d[0];
-    $('after').innerHTML = d[1];
+    setHtml($('before'), d[0]);
+    setHtml($('after'), d[1]);
     var head = timedOut ? 'Out of time, so it was kept.' : right ? 'Right call.' : 'Not quite.';
     var label = r.kind === 'bad' ? 'This was a rug pull.' : r.kind === 'benign' ? 'This change was harmless.' : 'This tool did not change.';
     var pin = r.kind === 'same' ? 'mcp-pin: 1 tool unchanged, session continues.'
       : 'mcp-pin: TOOL DEFINITIONS CHANGED SINCE YOU APPROVED THIS SERVER. Session blocked, diff shown.';
     var v = $('verdict');
     v.className = 'verdict ' + (right ? 'good' : 'bad');
-    v.innerHTML = '<b>' + esc(head) + '</b>' + esc(label) + ' ' + esc(r.why) +
+    setHtml(v, '<b>' + esc(head) + '</b>' + esc(label) + ' ' + esc(r.why) +
       (timedOut ? '<p>In real life, doing nothing means the change goes through.</p>' : '') +
-      '<div class="pin">' + esc(pin) + '</div>';
+      '<div class="pin">' + esc(pin) + '</div>');
     v.hidden = false;
     $('choose').hidden = true; $('keys').hidden = true;
     // On a phone the panes stack, so bring the verdict into view.
@@ -380,7 +392,7 @@ Made by <a href="https://github.com/GautamTalksDev">Gautam Khosla</a> for <a hre
     var caught = answers.filter(function (a) { return a.round.kind === 'bad' && a.choice === 'block'; }).length;
     var falseBlocks = answers.filter(function (a) { return a.round.kind !== 'bad' && a.choice === 'block'; }).length;
     var missedSchema = answers.some(function (a) { return a.round.a.name === 'create_ticket' && a.choice !== 'block'; });
-    $('score').innerHTML = caught + ' <small>of ' + BAD_TOTAL + ' rug pulls caught</small>';
+    setHtml($('score'), caught + ' <small>of ' + BAD_TOTAL + ' rug pulls caught</small>');
     var rank;
     if (caught === BAD_TOTAL && !falseBlocks) rank = 'Perfect. Now do that for every tool on every server, every session, forever.';
     else if (caught === BAD_TOTAL) rank = 'You caught them all, and blocked something harmless too. Good instinct. mcp-pin does the same, then lets you approve it in one command.';
@@ -390,12 +402,12 @@ Made by <a href="https://github.com/GautamTalksDev">Gautam Khosla</a> for <a hre
     $('rank').textContent = rank;
     var right = answers.filter(function (a) { return a.right; }).length;
     $('youbig').textContent = right + ' of ' + answers.length + ' right calls';
-    $('rows').innerHTML = answers.map(function (a) {
+    setHtml($('rows'), answers.map(function (a) {
       var what = a.round.kind === 'bad' ? 'rug pull' : a.round.kind === 'benign' ? 'harmless change' : 'unchanged';
       var did = a.timedOut ? 'ran out of time' : a.choice === 'block' ? 'blocked' : 'kept';
       return '<li><span class="m ' + (a.right ? 'ok' : 'no') + '">' + (a.right ? '&#10003;' : '&#10007;') + '</span><span><code>' +
         esc(a.round.a.name) + '</code>, ' + what + ', you ' + did + '</span></li>';
-    }).join('');
+    }).join(''));
     show('end');
     lastCaught = caught;
   }

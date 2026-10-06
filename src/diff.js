@@ -7,8 +7,18 @@ const C = {
   dim: (s) => (process.stderr.isTTY ? `\x1b[2m${s}\x1b[0m` : s),
 };
 
+// Server text is shown to a person, never acted on by their terminal.
+// Control characters (every escape sequence starts with one), bidirectional
+// controls and invisible characters print as \u{...}, so a definition cannot
+// erase, reorder or hide the lines printed around it.
+const UNSAFE = /[\u{0}-\u{1f}\u{7f}-\u{9f}\u{ad}\u{34f}\u{61c}\u{115f}\u{1160}\u{17b4}\u{17b5}\u{180b}-\u{180f}\u{200b}-\u{200f}\u{2028}-\u{202e}\u{2060}-\u{206f}\u{3164}\u{fe00}-\u{fe0e}\u{feff}\u{ffa0}\u{fff9}-\u{fffb}\u{e0000}-\u{e0fff}\u{d800}-\u{dfff}]/gu;
+
+function visible(s) {
+  return String(s).replace(UNSAFE, (ch) => '\\u{' + ch.codePointAt(0).toString(16) + '}');
+}
+
 function pretty(canonical) {
-  return JSON.stringify(JSON.parse(canonical), null, 2).split('\n');
+  return JSON.stringify(JSON.parse(canonical), null, 2).split('\n').map(visible);
 }
 
 // Plain LCS diff. No dependency, deterministic, good enough for tool objects.
@@ -32,7 +42,7 @@ function lcsDiff(a, b) {
 
 function renderToolDiff(name, oldCanonical, newCanonical) {
   const rows = lcsDiff(pretty(oldCanonical), pretty(newCanonical));
-  const lines = [`--- pinned/${name}`, `+++ observed/${name}`];
+  const lines = [`--- pinned/${visible(name)}`, `+++ observed/${visible(name)}`];
   // Collapse long runs of context.
   let ctx = 0;
   for (const [mark, text] of rows) {
@@ -48,14 +58,42 @@ function renderToolDiff(name, oldCanonical, newCanonical) {
   return lines.join('\n');
 }
 
+// The server's own instructions to the model, diffed line by line.
+function renderTextDiff(name, oldText, newText) {
+  const lines = [`--- pinned/${name}`, `+++ observed/${name}`];
+  const a = oldText == null ? ['(none)'] : String(oldText).split('\n').map(visible);
+  const b = newText == null ? ['(none)'] : String(newText).split('\n').map(visible);
+  for (const [mark, text] of lcsDiff(a, b)) {
+    if (mark === ' ') lines.push(C.dim('  ' + text));
+    else lines.push(mark === '-' ? C.red('- ' + text) : C.green('+ ' + text));
+  }
+  return lines.join('\n');
+}
+
 function renderDrift(driftList) {
   const out = [];
   for (const d of driftList) {
-    if (d.kind === 'added') out.push(C.green(`+ tool added: ${d.name}`));
-    else if (d.kind === 'removed') out.push(C.red(`- tool removed: ${d.name}`));
-    else out.push(renderToolDiff(d.name, d.oldCanonical, d.newCanonical));
+    const noun = d.what === 'prompt' ? 'prompt' : 'tool';
+    if (d.kind === 'added') out.push(C.green(`+ ${noun} added: ${visible(d.name)}`));
+    else if (d.kind === 'removed') out.push(C.red(`- ${noun} removed: ${visible(d.name)}`));
+    else if (d.kind === 'instructions') out.push(renderTextDiff('server-instructions', d.oldText, d.newText));
+    else out.push(renderToolDiff(noun === 'prompt' ? 'prompt:' + d.name : d.name, d.oldCanonical, d.newCanonical));
   }
   return out.join('\n\n');
 }
 
-module.exports = { renderDrift, renderToolDiff, C };
+// The triage line per changed item, most serious first, before the full diff.
+function renderSummary(driftList) {
+  const { summarize } = require('./classify');
+  const rows = summarize(driftList).map((r) => Object.assign({}, r, { name: visible(r.name) }));
+  const width = Math.min(28, Math.max(...rows.map((r) => r.name.length)));
+  const out = [C.bold('  What changed')];
+  for (const r of rows) {
+    const text = r.labels.map((l) => l.label).join('; ');
+    const line = `    ${r.name.padEnd(width)}  ${text}`;
+    out.push(r.level === 'high' ? C.red(line) : r.level === 'low' ? C.dim(line) : line);
+  }
+  return out.join('\n');
+}
+
+module.exports = { renderDrift, renderToolDiff, renderTextDiff, renderSummary, visible, C };

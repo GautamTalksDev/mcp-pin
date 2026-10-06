@@ -5,8 +5,9 @@
  */
 const COLORS = { green: '#3fb950', amber: '#d29922', red: '#f85149', grey: '#8b949e' };
 
+// Text and attribute values alike: the label and message also sit in aria-label.
 function esc(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function width(text) {

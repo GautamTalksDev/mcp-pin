@@ -9,6 +9,7 @@
 [![test](https://github.com/GautamTalksDev/mcp-pin/actions/workflows/test.yml/badge.svg)](https://github.com/GautamTalksDev/mcp-pin/actions/workflows/test.yml)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen.svg)](package.json)
+[![Listed on mcpservers.org](https://mcpservers.org/badge.svg)](https://mcpservers.org/servers/gautamtalksdev/mcp-pin)
 
 *A local proxy that blocks tool drift, and a public log that remembers every version.*
 
@@ -79,7 +80,7 @@ flowchart LR
     PX -.->|optional submission| LG
 ```
 
-**The proxy** fingerprints every tool's full metadata at approval time and re-derives that decision on every connect. If anything changed, including a change the server did not announce, the session is blocked with a diff. Client traffic is queued until that check completes; on drift, nothing queued is forwarded.
+**The proxy** fingerprints every tool's full metadata at approval time, along with the server's prompts and its instructions to the model, and re-derives that decision on every connect. If anything changed, including a change the server did not announce, the session is blocked with a diff. Client traffic is queued until that check completes; on drift, nothing queued is forwarded. After that, every tool and prompt listing your client receives is checked against the pin before it is delivered, for the whole session, so a server cannot show the check one toolset and your client another, or change its tools halfway through. It speaks both the 2026-07-28 protocol (no `initialize` handshake) and the earlier ones.
 
 **The public log** crawls MCP servers on a schedule, records every version of every tool definition, and keeps the history. Hash linked, signed, downloadable, and verifiable by anyone with no need to trust whoever publishes it. The crawler follows `tools/list` pagination; versions ≤0.1.0 did not, and records from those crawls are a floor rather than a count for any paginated server.
 
@@ -109,6 +110,48 @@ It lives in the README so it cannot be quietly renegotiated later.
 
 ---
 
+## Protect every server in one command
+
+```bash
+npx --yes mcp-pin@0.2.0 wrap
+```
+
+It finds the MCP servers configured in Claude Desktop, Claude Code, Cursor, VS Code, Gemini CLI, Devin Desktop, Windsurf, Cline and Codex, shows you what it will change, backs up each file to `~/.mcp-pin/backups`, and puts mcp-pin in front of every local server. Remote (URL) servers are left as they are, because the proxy speaks stdio only. Running it twice changes nothing; `mcp-pin unwrap` takes it out again. Restart the apps afterwards. Another app's config: `mcp-pin wrap --config <file>`. A project's shared `.mcp.json` is only touched with `--project`, because teammates use it too.
+
+## One click, and the Claude Code plugin
+
+**[mcp-pin.gautamkhosla.com/install](https://mcp-pin.gautamkhosla.com/install/)** has *Add to Cursor* and *Add to VS Code* buttons, and a generator: paste any MCP server command and get it protected for Claude Code, Claude Desktop, Cursor, VS Code, Codex and the rest, plus an install link server authors can put in their own README.
+
+In Claude Code, the plugin adds the lookup tools below, a skill for checking a server before you trust it, and a one-line note at session start listing local servers that run without mcp-pin (it reads config files only and changes nothing):
+
+```bash
+claude plugin marketplace add GautamTalksDev/mcp-pin
+claude plugin install mcp-pin@mcp-pin
+```
+
+Agents that read Agent Skills from a folder (Muse Code reads `.agents/skills/`, for example) can use the same skill: copy [`plugins/mcp-pin/skills/mcp-pin`](plugins/mcp-pin/skills/mcp-pin) into that folder.
+
+## Ask mcp-pin from your AI app
+
+mcp-pin is also an MCP server. Add it like any other and your agent can check a public server before you install it, and tell you which of your servers is waiting for review after a block.
+
+```json
+{
+  "mcpServers": {
+    "mcp-pin": { "command": "npx", "args": ["-y", "mcp-pin@0.2.0", "lookup"] }
+  }
+}
+```
+
+| Tool | What it answers |
+|---|---|
+| `mcp_pin_server_status` | Has this public server's tool list changed, and when? From the signed public log. |
+| `mcp_pin_my_servers` | Which servers are pinned here, and is any change waiting for review? |
+| `mcp_pin_change_summary` | What kind of change is waiting: new instruction, new field, wording only... |
+| `mcp_pin_how_to_protect` | The exact setup steps for Claude Code, Cursor, Codex, VS Code and others. |
+
+All four are read-only. They never return third-party text, neither tool descriptions from the log nor the changed definitions of a pending review, because a tool's output goes straight to the model. Names are reduced to a safe character set; the rest is dates, counts, hashes and fixed label keys. Approving stays with you in a terminal. `mcp-pin lookup --http 8787` serves the two public tools over Streamable HTTP on localhost, for hosting as a remote connector; it never exposes the pins of the machine it runs on.
+
 ## Protect one MCP server in 60 seconds
 
 Pick the server with the most access. Filesystem, GitHub, SSH, Kubernetes, a database, anything cloud. Put `mcp-pin` in front of it.
@@ -124,7 +167,7 @@ Add it in front of a server in your client config:
   "mcpServers": {
     "weather": {
       "command": "npx",
-      "args": ["mcp-pin", "--", "node", "weather-server.js"]
+      "args": ["-y", "mcp-pin@0.1.4", "--", "node", "weather-server.js"]
     }
   }
 }
@@ -161,13 +204,22 @@ When the server changes its mind about what its tools do:
   Review the diff. If you accept it:  mcp-pin approve 10925a2854bb9568
 ```
 
+Above the diff, every change is labelled so you can triage it at a glance: `New tool`, `New field: context`, `New instruction to the model`, `Mentions secrets or private files`, `New link or address`, `Hidden or unusual characters`, `Permission hint changed: readOnlyHint false to true`, or `Wording only`. The labels come from fixed rules over the two versions, not from a model, and they never unblock anything: every change still waits for you.
+
+Your client gets an error that names the server, the review command and the label names. It never repeats the changed text, because clients can pass error messages to the model and that text is the attack. Read the diff in a terminal with `mcp-pin review <id>`.
+
 ### All commands
 
 | Command | What it does |
 |---|---|
 | `mcp-pin -- <cmd>` | Run a server behind the proxy |
+| `mcp-pin wrap` / `unwrap` | Protect every local server in your AI apps, or undo it |
+| `mcp-pin lock` | Write the team's `mcp-pin.lock` from the project's `.mcp.json` |
+| `mcp-pin lock --check` | Compare every server with the lock; exit 1 on any change (for CI) |
+| `mcp-pin policy <product>` | Admin policy requiring mcp-pin: `claude-code`, `copilot`, `codex`, `cursor` or `all` |
 | `mcp-pin list` | Pinned servers, with drift flagged |
 | `mcp-pin show <id>` | Per tool fingerprints for one server |
+| `mcp-pin review <id>` | Show what changed since you approved it |
 | `mcp-pin approve <id>` | Accept the last observed drift and re-pin |
 | `mcp-pin forget <id>` | Drop a pin, re-pin on next connect |
 | `mcp-pin verify` | Verify your local log chain |
@@ -175,14 +227,16 @@ When the server changes its mind about what its tools do:
 
 ### What it works with
 
-Dated, because this changes. Last verified **3 September 2026**.
+Dated, because this changes. Last verified **5 October 2026**.
 
 | | Status |
 |---|---|
 | stdio transport | Supported. This is the only transport the proxy speaks. |
+| MCP 2026-07-28 and earlier versions | Supported. Tested with test clients for both protocol generations and with the official TypeScript SDK 1.32.1, 5 Oct 2026 |
 | HTTP and SSE transport | **Not supported by the proxy.** The public log crawls them; the proxy cannot yet sit in front of them. |
 | Claude Desktop | Tested, 2 Sep 2026 |
 | Cursor, Cline, Codex, OpenCode | Not yet verified by me. They speak stdio, so it should work; if you try one, [open an issue](https://github.com/GautamTalksDev/mcp-pin/issues/new?title=Client%20report%3A%20) with your client, its version and what happened, and I will put the result in this table with your name on it. |
+| Windows | Supported. Servers started through `npx` or another `.cmd` shim work from 0.2.0; before that the proxy could start only `.exe` commands such as `node`, and failed with `spawn npx ENOENT`. Test suite run on Windows 11 with Node 24, 5 Oct 2026 |
 | Node | 20 or newer |
 
 I would rather this table be short and true than long and optimistic.
@@ -192,6 +246,65 @@ I would rather this table be short and true than long and optimistic.
 The whole tool object. Name, description, input schema, and annotations, canonicalized per [RFC 8785](https://www.rfc-editor.org/rfc/rfc8785) and hashed with SHA-256. Adding or removing a tool changes the set hash as well.
 
 The rule is simple. **If the model can read it, it is in scope.** Key order does not matter, tool order does not matter, whitespace does not matter. A single character of a description does.
+
+The exact recipe is an open spec, [the tool definition hash](docs/TOOL_DEFINITION_HASH.md), with [test vectors](docs/tool-definition-hash-vectors.json) and a second, independent implementation in Python, so a registry, a gateway or another client can compute the same hashes and check each other's.
+
+---
+
+## For teams: commit an mcp-pin.lock
+
+A pin on one laptop protects one person, from whatever that laptop saw first. A team that shares a `.mcp.json` can commit what it approved instead, and review every change to it like a dependency update.
+
+```bash
+npx --yes mcp-pin@0.2.0 lock
+npx --yes mcp-pin@0.2.0 wrap --project --lock mcp-pin.lock
+```
+
+The first command starts each local server in `.mcp.json`, reads what the model would read (tools, prompts and the server's instructions), stops it, and writes `mcp-pin.lock`. No tool is called. Every definition is stored as readable JSON, so the pull request that updates the lock shows exactly what a server now tells the model. The second puts the proxy in front of each server in the shared config, pointed at the lock:
+
+```json
+"args": ["-y", "mcp-pin@0.2.0", "--lock", "mcp-pin.lock", "--name", "files", "--", "npx", "-y", "@modelcontextprotocol/server-filesystem", "."]
+```
+
+Commit both files. From then on a server that differs from the lock is blocked on every teammate's machine, on the first run too, before anything is forwarded, and for the whole session. A lock that is missing, unreadable or edited by hand so it no longer matches its own hashes stops the server instead of falling back. A relative lock path is read from the folder the client starts the server in; if yours starts servers somewhere else, use an absolute path.
+
+In CI, `mcp-pin lock --check` starts each server, compares it with the lock, prints the same labels as a block and exits 1 on any change, including a command edited in `.mcp.json` without re-locking. When a change is expected, run `mcp-pin lock` and commit the new lock in a pull request, so a person reads it before anyone's agent does.
+
+`${VAR}`, `${VAR:-default}` and `${env:VAR}` in the config are filled in from the environment, the way clients do. A server that needs a credential just to list its tools needs it in CI as well.
+
+### The package behind the definitions
+
+Definitions can stay the same while the code behind them changes. In September 2025, version 1.0.16 of the npm package `postmark-mcp` added one line that blind-copied every email it sent to an outside address ([The Hacker News](https://thehackernews.com/2025/09/first-malicious-mcp-server-found.html), [Snyk](https://snyk.io/blog/malicious-mcp-server-on-npm-postmark-mcp-harvests-emails/)). Anyone who ran it as `npx -y postmark-mcp` got the new code on their next start.
+
+So the lock also records the package each server runs: the exact npm or PyPI version and the registry's digest of it (npm's `integrity`, PyPI's file hashes), or the image digest of a `docker run image@sha256:...` command.
+
+- **The proxy runs the locked version**, even when the config asks for the newest: `npx -y some-server` runs `some-server@<locked version>`, so new code waits for a reviewed lock update. A config that names another version or package does not start.
+- **`mcp-pin lock --check` checks the version that runs.** It fails if the registry now serves different contents for it, and only notes that a newer version is out, so CI does not go red every time a server publishes.
+- **`mcp-pin lock` updates.** It resolves the newest version, probes exactly that version and records it, so the pull request shows the version change and any definition change together.
+
+A published npm version or PyPI file cannot be replaced, so the version carries most of the weight. The digest catches a registry or mirror that serves something else, and a new file added to an old PyPI release. Understood: `npx`, `npm exec`, `pnpm dlx`, `yarn dlx`, `bunx`, `uvx` and `pipx run --spec`. A version range (`^1.2.0`) cannot be held, so `lock` asks for an exact version or a tag. Docker images are held only when the config pins a digest, and `mcp-pin wrap` points out every server whose package is not pinned. A package the registry will not show without credentials can be locked with `--definitions-only`.
+
+---
+
+## For admins: require mcp-pin across the organisation
+
+Write the approved servers in one config file, lock them, and generate the policy for the AI tools your organisation uses:
+
+```bash
+npx --yes mcp-pin@0.2.0 lock --config approved.json --out mcp-pin.lock
+npx --yes mcp-pin@0.2.0 policy all --config approved.json --lock /etc/mcp-pin/mcp-pin.lock
+```
+
+That writes, under `mcp-pin-policy/`, a policy for each product in which every approved local server runs through mcp-pin, pinned to the organisation's lock with `--only-locked`, so a server the lock does not list does not start. Deploy the lock to that path on every machine, and the policy files with your device management. Nothing is installed by the command.
+
+| Product | What is generated | What it can enforce |
+|---|---|---|
+| Claude Code | `managed-mcp.json` (a fixed set) or `managed-settings.json` (an approved catalog, `allowManagedMcpServersOnly`) | Only these exact wrapped commands run. Commands match exactly, every argument in order. |
+| GitHub Copilot, and VS Code | `managed-settings.json` | The same, in Copilot CLI, VS Code, JetBrains and the Copilot app. Not the Copilot cloud agent, which has only an on/off policy. VS Code does not yet enforce the list in Agent Host sessions (microsoft/vscode issue 328241). |
+| Codex | `requirements.toml` and a matching `config.toml` | A server runs only if its name and every argument of its wrapped command match. Secrets are forwarded by name with `env_vars`, never written into the file. |
+| Cursor | `cursor-dashboard.txt` to copy into Team Settings | One wildcard entry, `*npx -y mcp-pin@0.2.0 --lock ... --only-locked --name * -- *`, requires the wrapper for every server; with the lock it is also the approved catalog. Enterprise plan; turn off User MCP extensions. |
+
+What these controls compare is the configured command, not what it runs. That is why the lock matters: the policy makes every server go through mcp-pin, and mcp-pin checks the definitions and the package version against what the organisation approved. Because the matching is exact, regenerate the policy when the approved list or the mcp-pin version changes. Remote (HTTP) servers are listed by URL; mcp-pin cannot sit in front of them yet. Checked against each vendor's documentation on 5 October 2026.
 
 ---
 
@@ -238,6 +351,10 @@ flowchart TD
 ```
 
 The log records **changes**, not heartbeats. A server that never changes produces exactly one entry, which is why a quiet log is a good log.
+
+### The monthly drift report
+
+On the 1st of each month the crawl job counts the month that ended from the log it has just verified and publishes it at [/reports/](https://mcp-pin.gautamkhosla.com/reports/): how many servers changed their tool definitions, what kind of change it was (a new tool, a new input field, a flipped permission hint, new wording that instructs the model), and which servers, by count of tools. Gaps in the crawl are stated, and a change first seen after one is dated by the window it happened in, not by the day it was noticed. The labels are mechanical, so they are totals and never shown against a named server. Run it yourself with `npm run report:month -- --month 2026-10`; it writes `data/reports/2026-10.json`.
 
 ### The badge
 
@@ -306,6 +423,8 @@ Listed here rather than buried, because a security tool that oversells itself is
 | **Paginated history before 0.1.1** | The crawler ignored `nextCursor`. A 4 September 2026 re-probe of all 248 recorded servers found 18 higher tool counts; **none of those 18 currently return `nextCursor`**. The extra tools were on page 1. See [the recrawl note](data/pagination-recrawl.json). |
 | **Day one malice is invisible** | This detects *change*. A server that ships hostile definitions on the very first connect and never changes them looks perfectly stable. |
 | **Not a prompt injection defence** | It does not inspect content or judge intent. It reports that bytes differ. |
+| **Prompt bodies and tool results** | Definitions are pinned: tools, prompts, and the server's instructions. The text a prompt returns when it is used (`prompts/get`) and what a tool call returns are produced per request and are not pinned. |
+| **New code behind the same definitions** | Without a team lock, mcp-pin checks definitions only, so a server started with `npx -y some-server` can run new code under unchanged tools. Pin a version in your config (`some-server@1.2.3`) or use [a lock](#the-package-behind-the-definitions), which holds the package version too. |
 | **Models sometimes catch this already** | Testing on 2 September 2026 showed Claude Desktop refusing obvious injected instructions in tool descriptions and warning the user unprompted. That defence depends on the payload being obvious. A deterministic check does not. |
 
 ---
