@@ -11,7 +11,7 @@ Add this entry to the client's MCP configuration (for Cline: `cline_mcp_settings
   "mcpServers": {
     "mcp-pin": {
       "command": "npx",
-      "args": ["-y", "mcp-pin@0.2.2", "lookup"]
+      "args": ["-y", "mcp-pin@0.2.3", "lookup"]
     }
   }
 }
@@ -19,7 +19,7 @@ Add this entry to the client's MCP configuration (for Cline: `cline_mcp_settings
 
 No API key and no environment variables are needed. Keep the exact version: mcp-pin's whole point is that what was approved does not change underneath the user.
 
-On Windows, if the client cannot start `npx` directly, use `"command": "cmd"` with `"args": ["/c", "npx", "-y", "mcp-pin@0.2.2", "lookup"]`.
+On Windows, if the client cannot start `npx` directly, use `"command": "cmd"` with `"args": ["/c", "npx", "-y", "mcp-pin@0.2.3", "lookup"]`.
 
 ## 2. Check it works
 
@@ -30,7 +30,7 @@ The server exposes four read-only tools. Call `mcp_pin_server_status` with `{"qu
 The lookup server only reads. To actually pin and protect the user's MCP servers, the user runs this in a terminal:
 
 ```
-npx -y mcp-pin@0.2.2 wrap
+npx -y mcp-pin@0.2.3 wrap
 ```
 
 It shows its plan, backs up each config file and asks before writing anything. Do not run it without the user's consent, and never run `mcp-pin approve` for them: approving a changed server is the user's decision.
