@@ -1,7 +1,7 @@
 {
   "name": "mcp-pin",
   "displayName": "mcp-pin",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Know when an MCP server's tools change after you approved them: lookup tools, a skill, and a session-start note listing servers that run without mcp-pin.",
   "author": {
     "name": "Gautam Khosla",

@@ -12,7 +12,7 @@ Everything else is best effort. There is no paid support and no SLA.
 
 ## Supported versions
 
-The latest release receives fixes. Pin an exact version (`mcp-pin@0.2.2`, never `@latest`), read the [changelog](CHANGELOG.md) before you move, and use `mcp-pin lock --check` in CI so an upgrade of a server, or of mcp-pin, is reviewed in a pull request.
+The latest release receives fixes. Pin an exact version (`mcp-pin@0.2.3`, never `@latest`), read the [changelog](CHANGELOG.md) before you move, and use `mcp-pin lock --check` in CI so an upgrade of a server, or of mcp-pin, is reviewed in a pull request.
 
 ## If this project stops
 

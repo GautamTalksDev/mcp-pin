@@ -703,6 +703,30 @@ process.stdout.write('lookup server\n');
   t('lookup gives setup steps with a pinned version', () => {
     assert.match(res[6].result.content[0].text, /mcp-pin@\d+\.\d+\.\d+/);
   });
+  t('lookup exits 0 once stdin closes after a lookup over keep-alive HTTP', () => {
+    // 0.2.3 crashed on Windows at this point (libuv assertion, 0xC0000409) after
+    // fetching the real log over HTTPS. A local plain-HTTP server does not
+    // reproduce that crash, so this checks the clean exit, not the crash.
+    const dir = tmp('mcp-pin-exit-');
+    const portFile = path.join(dir, 'port');
+    const body = fs.readFileSync(api, 'utf8');
+    const srv = spawn(process.execPath, ['-e',
+      `const s=require('http').createServer((q,r)=>{r.setHeader('content-type','application/json');r.end(${JSON.stringify(body)})});` +
+      `s.keepAliveTimeout=4000;s.listen(0,'127.0.0.1',()=>require('fs').writeFileSync(${JSON.stringify(portFile)},String(s.address().port)))`,
+    ], { stdio: 'ignore' });
+    try {
+      const until = Date.now() + 10000;
+      while (!(fs.existsSync(portFile) && fs.readFileSync(portFile, 'utf8')) && Date.now() < until) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
+      const r = spawnSync(process.execPath, [ATTEST, 'lookup'], {
+        env: Object.assign({}, process.env, { MCP_PIN_HOME: dir, ATTEST_HOME: dir, MCP_PIN_API: `http://127.0.0.1:${fs.readFileSync(portFile, 'utf8')}/api/servers.json` }),
+        input: [call(1, 'mcp_pin_server_status', { query: 'server-filesystem' })].map((m) => JSON.stringify(m)).join('\n') + '\n',
+        encoding: 'utf8', timeout: 20000,
+      });
+      assert.match(r.stdout, /server-filesystem/);
+      assert.strictEqual(r.status, 0, 'exit ' + r.status + ' ' + r.stderr);
+      assert.ok(!/Assertion/.test(r.stderr), r.stderr);
+    } finally { srv.kill(); }
+  });
 }
 
 process.stdout.write('claude code plugin and install page\n');
@@ -739,6 +763,8 @@ process.stdout.write('claude code plugin and install page\n');
     assert.ok(fs.existsSync(path.join(ROOT, gemini.contextFileName)));
     assert.strictEqual(read('plugins/mcp-pin/.claude-plugin/plugin.json').version, pkg.version);
     assert.strictEqual(read('plugins/mcp-pin/plugin.json').version, pkg.version);
+    const agents = fs.readFileSync(path.join(ROOT, 'llms-install.md'), 'utf8');
+    assert.deepStrictEqual([...new Set(agents.match(/mcp-pin@[\d.]+/g))], ['mcp-pin@' + pkg.version]);
     const cursor = read('plugins/mcp-pin/.cursor-plugin/plugin.json');
     assert.strictEqual(cursor.version, pkg.version);
     for (const p of [cursor.logo, cursor.mcpServers, cursor.hooks]) assert.ok(fs.existsSync(path.join(ROOT, 'plugins/mcp-pin', p)), p);
@@ -1306,6 +1332,20 @@ process.stdout.write('probe env classification\n');
   t('toolset-gating names are not placeholder-safe', () => {
     for (const n of ['SPOTIFY_MCP_TOOLSETS','SPOTIFY_MCP_ENABLE_TOOLS','SPOTIFY_MCP_DISABLE_TOOLS','FEATURE_FLAGS','MCP_MODE']) {
       assert.ok(!CREDENTIAL_ENV.test(n), n + ' must not receive a placeholder: it may change which tools register');
+    }
+  });
+}
+
+process.stdout.write('discovery\n');
+{
+  const { fromPopular, serverId, POPULAR } = require(path.join(ROOT, 'crawler/discover'));
+  t('the most-installed servers are probed first, under the same ids keyword search gives them', () => {
+    const recs = fromPopular();
+    assert.ok(POPULAR.includes('@modelcontextprotocol/server-filesystem') && POPULAR.includes('@playwright/mcp'));
+    assert.strictEqual(new Set(POPULAR).size, POPULAR.length, 'no duplicates');
+    for (const r of recs) {
+      assert.strictEqual(r.id, serverId('npm', r.name), 'a different id would split one server into two histories');
+      assert.deepStrictEqual(r.install.args, ['-y', r.name]);
     }
   });
 }

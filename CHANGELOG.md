@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.2.3
+
+### Fixes
+
+- On Windows, `mcp-pin lookup` crashed when its client closed stdin after a lookup: it exited while fetch was still closing its HTTPS connection, which trips a libuv assertion (exit code 0xC0000409, "Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)"). Found by testing the install in Cline. Reproduced 5 times out of 5 with Node 24 on Windows 11 against the public log; with the fix, 0 out of 5. The server now lets the event loop drain instead of calling `process.exit()`.
+
+### The public log
+
+- The crawler now probes the most-installed MCP servers on npm first. Seven of the ten most-downloaded, including `@playwright/mcp`, `chrome-devtools-mcp` and the official `@modelcontextprotocol` servers, carry no `mcp` keyword, so keyword search never found them, and a lookup for the servers people use most answered "no match". The list is ranked by weekly downloads on 6 October 2026 and keeps the ids keyword search gives, so servers already in the log keep their history.
+
+### Easier to install
+
+- `llms-install.md`: setup steps for AI agents such as Cline, including the Windows `cmd /c npx` form.
+- The README links every install path (Claude Code, Cursor, VS Code and more, Cline, GitHub Actions) and shows the zero runtime dependencies.
+- The plugin installs in Cursor (`.cursor-plugin/plugin.json`) and in Copilot (`plugin.json`, Agent Plugins format).
+
+### Supply chain
+
+- Every release gets a CycloneDX SBOM attached. The release fails if the SBOM lists a runtime dependency.
+
 ## 0.2.2
 
 - The GitHub Action's description is under 125 characters, so the Action can be published to the GitHub Marketplace.

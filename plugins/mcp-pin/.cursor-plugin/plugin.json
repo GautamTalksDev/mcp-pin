@@ -1,7 +1,7 @@
 {
   "name": "mcp-pin",
   "description": "Know when an MCP server's tools change after you approved them: read-only lookup tools against mcp-pin's signed public log and your local pins, and a skill for checking servers before you trust them.",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "author": {
     "name": "Gautam Khosla"
   },

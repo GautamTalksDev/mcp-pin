@@ -297,8 +297,17 @@ function serveStdio() {
     inflight.add(p);
     p.finally(() => inflight.delete(p));
   });
-  // stdin closing is the shutdown signal; answer what is in flight first.
-  rl.on('close', () => { Promise.allSettled([...inflight]).then(() => process.exit(0)); });
+  // stdin closing is the shutdown signal; answer what is in flight first, then
+  // let the event loop drain instead of calling process.exit(). On Windows,
+  // exiting while fetch is still closing its keep-alive socket crashes Node
+  // with a libuv assertion (exit code 0xC0000409). The timer only matters if
+  // something keeps the loop alive far longer than a socket's idle timeout.
+  rl.on('close', () => {
+    Promise.allSettled([...inflight]).then(() => {
+      process.exitCode = 0;
+      setTimeout(() => process.exit(0), 15000).unref();
+    });
+  });
 }
 
 // Streamable HTTP for hosting as a remote connector. Public tools only:

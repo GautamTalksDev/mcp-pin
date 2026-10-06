@@ -19,6 +19,35 @@ function serverId(kind, key) {
   return sha256(`${kind}:${key}`).slice(0, 16);
 }
 
+// The most-installed stdio servers on npm, by weekly downloads on 6 Oct 2026.
+// Several carry no mcp keyword (the official @modelcontextprotocol servers,
+// @playwright/mcp), so keyword search never found them, yet they are what
+// people look up first. Listed first so a crawl --limit never drops them.
+// Libraries and bridges that are not servers themselves (mcp-remote,
+// @vercel/mcp-adapter) are left out.
+const POPULAR = [
+  '@playwright/mcp', 'chrome-devtools-mcp', '@modelcontextprotocol/server-filesystem', '@upstash/context7-mcp',
+  '@wonderwhy-er/desktop-commander', '@modelcontextprotocol/server-everything', 'hostinger-api-mcp',
+  '@notionhq/notion-mcp-server', 'firecrawl-mcp', '@azure/mcp', '@modelcontextprotocol/server-memory',
+  '@modelcontextprotocol/server-github', 'mongodb-mcp-server', '@sentry/mcp-server',
+  '@modelcontextprotocol/server-sequential-thinking', '@modelcontextprotocol/server-postgres',
+  '@modelcontextprotocol/server-slack', 'figma-developer-mcp', '@supabase/mcp-server-supabase', '@shopify/dev-mcp',
+  '@hubspot/mcp-server', '@modelcontextprotocol/server-puppeteer', '@modelcontextprotocol/server-brave-search',
+  'tavily-mcp', '@stripe/mcp', '@21st-dev/magic', 'exa-mcp-server', 'mcp-server-kubernetes', '@browsermcp/mcp',
+  '@heroku/mcp-server', '@modelcontextprotocol/server-google-maps', '@brightdata/mcp',
+];
+
+function fromPopular() {
+  return POPULAR.map((name) => ({
+    id: serverId('npm', name),
+    name,
+    source: 'npm',
+    description: '',
+    homepage: `https://www.npmjs.com/package/${name}`,
+    install: { type: 'stdio', command: 'npx', args: ['-y', name] },
+  }));
+}
+
 // npm: packages keyworded mcp / mcp-server. This is the largest reachable
 // source and the one most likely to be installed by real users.
 async function fromNpm(limit = 250) {
@@ -117,21 +146,29 @@ async function fromGitHubTopic(pages = 3) {
 
 async function discover(opts = {}) {
   const results = await Promise.allSettled([
+    opts.npm !== false ? fromPopular() : [],
     opts.npm !== false ? fromNpm(opts.limit || 250) : [],
     opts.registry !== false ? fromMcpRegistry() : [],
     opts.github === true ? fromGitHubTopic() : [],
   ]);
   const all = [];
-  const seen = new Set();
+  const seen = new Map();
   for (const r of results) {
     if (r.status !== 'fulfilled') continue;
     for (const s of r.value) {
-      if (seen.has(s.id)) continue;
-      seen.add(s.id);
+      const first = seen.get(s.id);
+      if (first) {
+        // Keep the first record's place in the order; take the description
+        // and homepage from a source that has them.
+        if (!first.description && s.description) first.description = s.description;
+        if (s.homepage && first.homepage.startsWith('https://www.npmjs.com/')) first.homepage = s.homepage;
+        continue;
+      }
+      seen.set(s.id, s);
       all.push(s);
     }
   }
   return all;
 }
 
-module.exports = { discover, fromNpm, fromMcpRegistry, fromGitHubTopic, serverId };
+module.exports = { discover, fromPopular, fromNpm, fromMcpRegistry, fromGitHubTopic, serverId, POPULAR };

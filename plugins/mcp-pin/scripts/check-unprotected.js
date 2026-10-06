@@ -40,6 +40,6 @@ if (unprotected.size) {
   process.stdout.write(
     `mcp-pin: ${unprotected.size} local MCP server(s) here run without mcp-pin (${names.join(', ')}). ` +
       'Their tool definitions can change after approval without anyone noticing. ' +
-      'If the user wants that covered, they can run: npx -y mcp-pin@0.2.2 wrap\n'
+      'If the user wants that covered, they can run: npx -y mcp-pin@0.2.3 wrap\n'
   );
 }
