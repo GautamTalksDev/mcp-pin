@@ -104,15 +104,15 @@ mcp-pin is published on npm only. The Python package named `mcp-pin` on PyPI is 
 
 ---
 
-## Kill test
+## The 15 October goal (no longer a kill test)
 
-Pre-registered on 1 September 2026, before any code was written.
+Pre-registered on 1 September 2026, before any code was written, as a kill test:
 
 > **By 15 October 2026: at least 10 public MCP server READMEs carry the mcp-pin badge, OR at least 100 unique proxy installs (npm downloads excluding CI).**
 >
 > If neither happens, this repository is archived and the numbers are published as they stand.
 
-It lives in the README so it cannot be quietly renegotiated later.
+**Cancelled on 9 October 2026.** The 15 October goal is no longer a shutdown condition. mcp-pin is staying: it remains public and maintained as a project, nothing will be archived on 15 October, and the drift data keeps publishing from the daily crawl. The commitment above is left exactly as it was written, so the change is visible instead of quietly edited away.
 
 ---
 
