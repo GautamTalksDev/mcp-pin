@@ -3,8 +3,15 @@
  * The public log. Append-only, hash-linked, Ed25519-signed heads.
  *
  * Storage is NDJSON on disk. That is deliberate for v1: the entire log is a
- * file anyone can download and verify offline with `mcp-pin verify-log`.
- * Move to D1/Turso when the file gets large; the entry shape does not change.
+ * set of files anyone can download and verify offline with `mcp-pin verify-log`.
+ *
+ * The log is one hash chain stored as ordered segments: sealed segments in
+ * log-segments/0001.ndjson, 0002.ndjson, ... then the active log.ndjson, which
+ * is the tail. GitHub rejects any file over 100 MiB, and the single file reached
+ * 102.5 MiB on 31 Oct 2026, so the daily "crawl" push was refused. A segment is
+ * sealed (renamed, never rewritten) once the active file passes ROTATE_BYTES.
+ * The entry shape, the chain and the head signature are unchanged: the head
+ * still covers every entry, in segment order.
  */
 const fs = require('fs');
 const path = require('path');
@@ -23,10 +30,18 @@ function pubFromPrivateB64(b64) {
   return crypto.createPublicKey(priv).export({ format: 'der', type: 'spki' }).toString('base64');
 }
 
+// Rotate before an append once the active file is this big. The largest entry
+// seen is about 3 MB, so a segment stays far below GitHub's 100 MiB limit.
+const ROTATE_BYTES = 50 * 1024 * 1024;
+const SEGMENT_DIR = 'log-segments';
+const SEGMENT_RE = /^(\d{4})\.ndjson$/;
+
 class PublicLog {
-  constructor(dir) {
+  constructor(dir, opts) {
     this.dir = dir;
+    this.rotateBytes = (opts && opts.rotateBytes) || ROTATE_BYTES;
     this.file = path.join(dir, 'log.ndjson');
+    this.segmentDir = path.join(dir, SEGMENT_DIR);
     this.headFile = path.join(dir, 'head.json');
     this.keyFile = path.join(dir, 'log-key.json');
     fs.mkdirSync(dir, { recursive: true });
@@ -61,29 +76,62 @@ class PublicLog {
     return { priv: privateKey, pubB64: j.pub };
   }
 
-  entries() {
-    let raw;
+  // Sealed segments in order, as absolute paths. A gap in the numbering is an
+  // error: a missing segment must never read as a shorter, valid log.
+  segmentFiles() {
+    let names;
     try {
-      raw = fs.readFileSync(this.file, 'utf8');
+      names = fs.readdirSync(this.segmentDir);
     } catch (e) {
       if (e.code === 'ENOENT') return [];
       throw e;
     }
-    if (!raw.trim()) return [];
+    const nums = names.filter((n) => SEGMENT_RE.test(n)).sort();
+    nums.forEach((n, i) => {
+      if (Number(n.slice(0, 4)) !== i + 1) {
+        throw new Error(`log segment ${String(i + 1).padStart(4, '0')}.ndjson is missing`);
+      }
+    });
+    return nums.map((n) => path.join(this.segmentDir, n));
+  }
+
+  entries() {
     const out = [];
-    const lines = raw.split('\n');
-    for (let i = 0; i < lines.length; i++) {
-      const l = lines[i];
-      if (!l.trim()) continue;
+    const files = this.segmentFiles();
+    files.push(this.file);
+    for (const f of files) {
+      let raw;
       try {
-        out.push(JSON.parse(l));
+        raw = fs.readFileSync(f, 'utf8');
       } catch (e) {
-        const err = new Error('malformed log at line ' + (i + 1));
-        err.cause = e;
-        throw err;
+        if (e.code === 'ENOENT' && f === this.file) continue;
+        throw e;
+      }
+      if (!raw.trim()) continue;
+      const where = f === this.file ? '' : ` of ${SEGMENT_DIR}/${path.basename(f)}`;
+      const lines = raw.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const l = lines[i];
+        if (!l.trim()) continue;
+        try {
+          out.push(JSON.parse(l));
+        } catch (e) {
+          const err = new Error('malformed log at line ' + (i + 1) + where);
+          err.cause = e;
+          throw err;
+        }
       }
     }
     return out;
+  }
+
+  // Seal the active file as the next segment. Content is never changed: the
+  // file is renamed, and the next append starts a new active file whose first
+  // entry links to the last entry of the sealed one.
+  rotate() {
+    const next = this.segmentFiles().length + 1;
+    fs.mkdirSync(this.segmentDir, { recursive: true });
+    fs.renameSync(this.file, path.join(this.segmentDir, String(next).padStart(4, '0') + '.ndjson'));
   }
 
   lastHash() {
@@ -95,6 +143,11 @@ class PublicLog {
   // the last recorded state for this server. The log records *changes*, plus
   // a liveness timestamp kept separately.
   append(record) {
+    try {
+      if (fs.statSync(this.file).size >= this.rotateBytes) this.rotate();
+    } catch (e) {
+      if (e.code !== 'ENOENT') throw e;
+    }
     const prev = this.lastHash();
     const body = {
       seq: this.entries().length,
@@ -202,4 +255,4 @@ class PublicLog {
   }
 }
 
-module.exports = { PublicLog, parsePublicKeyFile };
+module.exports = { PublicLog, parsePublicKeyFile, ROTATE_BYTES, SEGMENT_DIR };

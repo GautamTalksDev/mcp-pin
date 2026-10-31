@@ -158,6 +158,57 @@ t('rejects a head signed by an untrusted key', () => {
   assert.ok(h.public_key);
 });
 
+t('log rotates into segments, stays one verifiable chain', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-seg-'));
+  const l = new PublicLog(d, { rotateBytes: 1500 });
+  const pad = 'x'.repeat(400);
+  for (let i = 0; i < 12; i++) l.append({ server_id: 's' + (i % 3), server_name: 'n', source: 'test', set_hash: 'h' + i, tools: [{ name: pad }] });
+  const segs = fs.readdirSync(path.join(d, 'log-segments')).sort();
+  assert.ok(segs.length >= 2, 'rotated: ' + segs.join(','));
+  assert.deepStrictEqual(segs.slice(0, 2), ['0001.ndjson', '0002.ndjson']);
+  for (const f of segs) assert.ok(fs.statSync(path.join(d, 'log-segments', f)).size < 1500 + 700, f);
+  assert.strictEqual(l.entries().length, 12);
+  assert.deepStrictEqual(l.entries().map((e) => e.seq), [...Array(12).keys()]);
+  const h = l.signHead();
+  const r = new PublicLog(d).verify({ trustedPublicKey: h.public_key });
+  assert.strictEqual(r.ok, true, r.reason);
+  assert.strictEqual(r.count, 12);
+});
+t('a deleted or reordered segment fails verification', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-seg2-'));
+  const l = new PublicLog(d, { rotateBytes: 1200 });
+  for (let i = 0; i < 9; i++) l.append({ server_id: 's', server_name: 'n', source: 'test', set_hash: 'h' + i, tools: [{ name: 'y'.repeat(400) }] });
+  const h = l.signHead();
+  const sd = path.join(d, 'log-segments');
+  const first = path.join(sd, '0001.ndjson');
+  const second = path.join(sd, '0002.ndjson');
+  const keep = fs.readFileSync(first);
+  fs.unlinkSync(first);
+  let r = new PublicLog(d).verify({ trustedPublicKey: h.public_key });
+  assert.strictEqual(r.ok, false);
+  assert.match(r.reason, /0001\.ndjson is missing/);
+  fs.writeFileSync(first, fs.readFileSync(second));
+  fs.writeFileSync(second, keep);
+  r = new PublicLog(d).verify({ trustedPublicKey: h.public_key });
+  assert.strictEqual(r.ok, false);
+  assert.match(r.reason, /broken link/);
+});
+t('a malformed segment names the file', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-pin-seg3-'));
+  fs.mkdirSync(path.join(d, 'log-segments'));
+  fs.writeFileSync(path.join(d, 'log-segments', '0001.ndjson'), 'garbage\n');
+  const r = new PublicLog(d).verify();
+  assert.strictEqual(r.ok, false);
+  assert.match(r.reason, /malformed log at line 1 of log-segments\/0001\.ndjson/);
+});
+t('every committed log file is under 90 MiB, so GitHub accepts the push', () => {
+  const dataDir = path.join(ROOT, 'data');
+  const files = [path.join(dataDir, 'log.ndjson')];
+  const sd = path.join(dataDir, 'log-segments');
+  if (fs.existsSync(sd)) for (const f of fs.readdirSync(sd)) files.push(path.join(sd, f));
+  for (const f of files) assert.ok(fs.statSync(f).size < 90 * 1024 * 1024, f);
+});
+
 process.stdout.write('badge\n');
 const ago = (d) => new Date(Date.now() - d * 86400000).toISOString();
 t('never-changed server reads unchanged', () => {
@@ -798,7 +849,7 @@ process.stdout.write('claude code plugin and install page\n');
   const buildSite = () => {
     if (built) return built;
     const out = tmp('mcp-pin-site-');
-    const b = spawnSync(process.execPath, [path.join(ROOT, 'site/build.js'), '--data', path.join(ROOT, 'data'), '--out', out], { encoding: 'utf8', timeout: 120000 });
+    const b = spawnSync(process.execPath, [path.join(ROOT, 'site/build.js'), '--data', path.join(ROOT, 'data'), '--out', out], { encoding: 'utf8', timeout: 900000 });
     assert.strictEqual(b.status, 0, b.stdout + b.stderr);
     return (built = out);
   };

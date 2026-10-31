@@ -8,12 +8,12 @@
     "source": "github"
   },
   "websiteUrl": "https://mcp-pin.gautamkhosla.com",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "mcp-pin",
-      "version": "0.2.3",
+      "version": "0.2.4",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"
