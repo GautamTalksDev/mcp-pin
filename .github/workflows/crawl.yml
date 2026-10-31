@@ -36,6 +36,7 @@ jobs:
           name: crawl-data
           path: |
             data/log.ndjson
+            data/log-segments
             data/state.json
             data/last-crawl.json
             data/crawls.ndjson
@@ -107,7 +108,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          files="data/log.ndjson data/head.json data/state.json data/last-crawl.json data/crawls.ndjson"
+          files="data/log.ndjson data/log-segments data/head.json data/state.json data/last-crawl.json data/crawls.ndjson"
           [ -d data/reports ] && files="$files data/reports"
           git add $files
           git diff --staged --quiet && exit 0

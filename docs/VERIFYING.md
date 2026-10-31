@@ -6,6 +6,7 @@ A transparency log is only worth something if you can check it yourself. This pa
 
 ```bash
 curl -LO https://mcp-pin.gautamkhosla.com/log.ndjson
+# since 31 Oct 2026 the log is also sealed segments: fetch each file in data/log-segments/ into ./log-segments/
 curl -LO https://mcp-pin.gautamkhosla.com/head.json
 curl -LO https://mcp-pin.gautamkhosla.com/PUBLIC_KEY.txt
 npx --yes mcp-pin@0.1.4 verify-log .

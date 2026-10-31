@@ -382,6 +382,7 @@ The point of a transparency log is that you do not have to trust the people runn
 
 ```bash
 curl -LO https://mcp-pin.gautamkhosla.com/log.ndjson
+# since 31 Oct 2026 the log is also sealed segments: fetch each file in data/log-segments/ into ./log-segments/
 curl -LO https://mcp-pin.gautamkhosla.com/head.json
 curl -LO https://mcp-pin.gautamkhosla.com/PUBLIC_KEY.txt
 npx --yes mcp-pin@0.1.4 verify-log .

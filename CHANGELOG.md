@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### The public log
+
+- The log is now stored as ordered segments: sealed `data/log-segments/0001.ndjson`, `0002.ndjson`, and so on, then the active `data/log.ndjson` as the tail. GitHub refuses any file over 100 MiB, `data/log.ndjson` reached 102.5 MiB on 31 October 2026, and the daily "crawl" job failed to push from that day. The chain, the entries, the hashes and the signed head are unchanged: the segments joined in order are byte for byte the old file (sha256 e6c1dcef...e039b before and after), and the head still covers every entry. The active file is sealed once it passes 50 MiB.
+- To verify, download `head.json`, `PUBLIC_KEY.txt`, every file under `log-segments/` and `log.ndjson` into one folder (keep the `log-segments` folder) and run `verify-log` on it. A missing or reordered segment fails verification. A verifier older than this change reads only `log.ndjson` and reports a broken link at entry 0; use the version that ships this change.
+
 ## 0.2.3
 
 ### Fixes
