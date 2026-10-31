@@ -95,7 +95,7 @@ The tool never asks a model whether a change looks dangerous. It computes a hash
 ## See it in 10 seconds
 
 ```bash
-npx --yes mcp-pin@0.1.4 demo
+npx --yes mcp-pin@0.2.4 demo
 ```
 
 A harmless bundled server changes its one tool between two sessions: the description starts asking for notes from the conversation, and the schema grows a field to carry them. The first session pins it. The second is blocked, with the diff. It runs in a temporary folder that is deleted afterwards, never touches your real pins, never calls a tool, and makes no network calls.
@@ -119,7 +119,7 @@ Pre-registered on 1 September 2026, before any code was written, as a kill test:
 ## Protect every server in one command
 
 ```bash
-npx --yes mcp-pin@0.2.3 wrap
+npx --yes mcp-pin@0.2.4 wrap
 ```
 
 It finds the MCP servers configured in Claude Desktop, Claude Code, Cursor, VS Code, Gemini CLI, Devin Desktop, Windsurf, Cline and Codex, shows you what it will change, backs up each file to `~/.mcp-pin/backups`, and puts mcp-pin in front of every local server. Remote (URL) servers are left as they are, because the proxy speaks stdio only. Running it twice changes nothing; `mcp-pin unwrap` takes it out again. Restart the apps afterwards. Another app's config: `mcp-pin wrap --config <file>`. A project's shared `.mcp.json` is only touched with `--project`, because teammates use it too.
@@ -144,7 +144,7 @@ mcp-pin is also an MCP server. Add it like any other and your agent can check a 
 ```json
 {
   "mcpServers": {
-    "mcp-pin": { "command": "npx", "args": ["-y", "mcp-pin@0.2.3", "lookup"] }
+    "mcp-pin": { "command": "npx", "args": ["-y", "mcp-pin@0.2.4", "lookup"] }
   }
 }
 ```
@@ -163,7 +163,7 @@ All four are read-only. They never return third-party text, neither tool descrip
 Pick the server with the most access. Filesystem, GitHub, SSH, Kubernetes, a database, anything cloud. Put `mcp-pin` in front of it.
 
 ```bash
-npx --yes mcp-pin@0.1.4 -- <your mcp server command>
+npx --yes mcp-pin@0.2.4 -- <your mcp server command>
 ```
 
 Add it in front of a server in your client config:
@@ -173,7 +173,7 @@ Add it in front of a server in your client config:
   "mcpServers": {
     "weather": {
       "command": "npx",
-      "args": ["-y", "mcp-pin@0.1.4", "--", "node", "weather-server.js"]
+      "args": ["-y", "mcp-pin@0.2.4", "--", "node", "weather-server.js"]
     }
   }
 }
@@ -182,7 +182,7 @@ Add it in front of a server in your client config:
 First run pins. Every run after that verifies.
 
 ```
-$ npx --yes mcp-pin@0.1.4 -- node weather-server.js
+$ npx --yes mcp-pin@0.2.4 -- node weather-server.js
 mcp-pin: pinned 1 tool(s) for node [1 arg] (40c179188ad9)
 ```
 
@@ -262,14 +262,14 @@ The exact recipe is an open spec, [the tool definition hash](docs/TOOL_DEFINITIO
 A pin on one laptop protects one person, from whatever that laptop saw first. A team that shares a `.mcp.json` can commit what it approved instead, and review every change to it like a dependency update.
 
 ```bash
-npx --yes mcp-pin@0.2.3 lock
-npx --yes mcp-pin@0.2.3 wrap --project --lock mcp-pin.lock
+npx --yes mcp-pin@0.2.4 lock
+npx --yes mcp-pin@0.2.4 wrap --project --lock mcp-pin.lock
 ```
 
 The first command starts each local server in `.mcp.json`, reads what the model would read (tools, prompts and the server's instructions), stops it, and writes `mcp-pin.lock`. No tool is called. Every definition is stored as readable JSON, so the pull request that updates the lock shows exactly what a server now tells the model. The second puts the proxy in front of each server in the shared config, pointed at the lock:
 
 ```json
-"args": ["-y", "mcp-pin@0.2.3", "--lock", "mcp-pin.lock", "--name", "files", "--", "npx", "-y", "@modelcontextprotocol/server-filesystem", "."]
+"args": ["-y", "mcp-pin@0.2.4", "--lock", "mcp-pin.lock", "--name", "files", "--", "npx", "-y", "@modelcontextprotocol/server-filesystem", "."]
 ```
 
 Commit both files. From then on a server that differs from the lock is blocked on every teammate's machine, on the first run too, before anything is forwarded, and for the whole session. A lock that is missing, unreadable or edited by hand so it no longer matches its own hashes stops the server instead of falling back. A relative lock path is read from the folder the client starts the server in; if yours starts servers somewhere else, use an absolute path.
@@ -297,8 +297,8 @@ A published npm version or PyPI file cannot be replaced, so the version carries 
 Write the approved servers in one config file, lock them, and generate the policy for the AI tools your organisation uses:
 
 ```bash
-npx --yes mcp-pin@0.2.3 lock --config approved.json --out mcp-pin.lock
-npx --yes mcp-pin@0.2.3 policy all --config approved.json --lock /etc/mcp-pin/mcp-pin.lock
+npx --yes mcp-pin@0.2.4 lock --config approved.json --out mcp-pin.lock
+npx --yes mcp-pin@0.2.4 policy all --config approved.json --lock /etc/mcp-pin/mcp-pin.lock
 ```
 
 That writes, under `mcp-pin-policy/`, a policy for each product in which every approved local server runs through mcp-pin, pinned to the organisation's lock with `--only-locked`, so a server the lock does not list does not start. Deploy the lock to that path on every machine, and the policy files with your device management. Nothing is installed by the command.
@@ -308,7 +308,7 @@ That writes, under `mcp-pin-policy/`, a policy for each product in which every a
 | Claude Code | `managed-mcp.json` (a fixed set) or `managed-settings.json` (an approved catalog, `allowManagedMcpServersOnly`) | Only these exact wrapped commands run. Commands match exactly, every argument in order. |
 | GitHub Copilot, and VS Code | `managed-settings.json` | The same, in Copilot CLI, VS Code, JetBrains and the Copilot app. Not the Copilot cloud agent, which has only an on/off policy. VS Code does not yet enforce the list in Agent Host sessions (microsoft/vscode issue 328241). |
 | Codex | `requirements.toml` and a matching `config.toml` | A server runs only if its name and every argument of its wrapped command match. Secrets are forwarded by name with `env_vars`, never written into the file. |
-| Cursor | `cursor-dashboard.txt` to copy into Team Settings | One wildcard entry, `*npx -y mcp-pin@0.2.3 --lock ... --only-locked --name * -- *`, requires the wrapper for every server; with the lock it is also the approved catalog. Enterprise plan; turn off User MCP extensions. |
+| Cursor | `cursor-dashboard.txt` to copy into Team Settings | One wildcard entry, `*npx -y mcp-pin@0.2.4 --lock ... --only-locked --name * -- *`, requires the wrapper for every server; with the lock it is also the approved catalog. Enterprise plan; turn off User MCP extensions. |
 
 What these controls compare is the configured command, not what it runs. That is why the lock matters: the policy makes every server go through mcp-pin, and mcp-pin checks the definitions and the package version against what the organisation approved. Because the matching is exact, regenerate the policy when the approved list or the mcp-pin version changes. Remote (HTTP) servers are listed by URL; mcp-pin cannot sit in front of them yet. Checked against each vendor's documentation on 5 October 2026.
 
@@ -318,7 +318,7 @@ What these controls compare is the configured command, not what it runs. That is
 
 > **Experimental.** The GitHub Action is not part of the npm releases. Its bootstrap instructions currently reference a package that is not on npm, and the baseline does not survive the runner. Use the local proxy. Do not adopt the action in CI yet.
 >
-> **For a CI gate that works today**, commit an `mcp-pin.lock` and run `npx -y mcp-pin@0.2.3 lock --check` in any CI: it fails the build when a server's definitions or the contents of its locked package change. See [For teams](#for-teams-commit-an-mcp-pinlock).
+> **For a CI gate that works today**, commit an `mcp-pin.lock` and run `npx -y mcp-pin@0.2.4 lock --check` in any CI: it fails the build when a server's definitions or the contents of its locked package change. See [For teams](#for-teams-commit-an-mcp-pinlock).
 
 If you maintain an MCP server, the useful place to notice a definition change is the pull request that makes it.
 
@@ -381,16 +381,15 @@ The badge only ever states a fact about time. It says `unchanged 91d` or `change
 The point of a transparency log is that you do not have to trust the people running it. Every entry is hash linked to the one before it, and the head is signed with Ed25519. The verifier pins `PUBLIC_KEY.txt`; it will not accept a head signed by whatever key arrives with the file.
 
 ```bash
-curl -LO https://mcp-pin.gautamkhosla.com/log.ndjson
-# since 31 Oct 2026 the log is also sealed segments: fetch each file in data/log-segments/ into ./log-segments/
-curl -LO https://mcp-pin.gautamkhosla.com/head.json
-curl -LO https://mcp-pin.gautamkhosla.com/PUBLIC_KEY.txt
-npx --yes mcp-pin@0.1.4 verify-log .
+git clone --depth 1 https://github.com/GautamTalksDev/mcp-pin.git
+npx --yes mcp-pin@0.2.4 verify-log mcp-pin/data
 ```
 
 ```
 public log OK, 454 entries, chain intact, head signature valid
 ```
+
+Since 31 October 2026 the log is stored as sealed segments, `data/log-segments/0001.ndjson`, `0002.ndjson` and so on, followed by the active `data/log.ndjson`, because GitHub refuses any file over 100 MiB. To verify without cloning, put `head.json`, `log.ndjson` and every segment in one folder, keeping the `log-segments` folder, and run `verify-log` on it. A missing or reordered segment fails. Use 0.2.4 or later: earlier versions read only `log.ndjson` and report a broken link at entry 0. [docs/VERIFYING.md](docs/VERIFYING.md) has the details.
 
 Change one byte of any historical entry and that command exits non zero. If this project ever quietly edited history, anyone holding an older copy could prove it.
 

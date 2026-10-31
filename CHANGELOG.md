@@ -1,11 +1,20 @@
 # Changelog
 
-## Unreleased
+## 0.2.4
 
 ### The public log
 
 - The log is now stored as ordered segments: sealed `data/log-segments/0001.ndjson`, `0002.ndjson`, and so on, then the active `data/log.ndjson` as the tail. GitHub refuses any file over 100 MiB, `data/log.ndjson` reached 102.5 MiB on 31 October 2026, and the daily "crawl" job failed to push from that day. The chain, the entries, the hashes and the signed head are unchanged: the segments joined in order are byte for byte the old file (sha256 e6c1dcef...e039b before and after), and the head still covers every entry. The active file is sealed once it passes 50 MiB.
-- To verify, download `head.json`, `PUBLIC_KEY.txt`, every file under `log-segments/` and `log.ndjson` into one folder (keep the `log-segments` folder) and run `verify-log` on it. A missing or reordered segment fails verification. A verifier older than this change reads only `log.ndjson` and reports a broken link at entry 0; use the version that ships this change.
+- `verify-log` reads the segments. To verify, clone the repository and run `npx --yes mcp-pin@0.2.4 verify-log mcp-pin/data`, or download `head.json`, every file under `log-segments/` and `log.ndjson` into one folder (keep the `log-segments` folder) and run `verify-log` on it. A missing, reordered or malformed segment fails verification. Versions before 0.2.4 read only `log.ndjson` and report a broken link at entry 0, so the README and `docs/VERIFYING.md` now pin 0.2.4.
+
+### Docs
+
+- The README's demo, proxy and config examples pinned 0.1.4, which predates the 0.2.0 fixes (every listing the client receives is checked; servers started through npx run on Windows). They now pin 0.2.4, like every other install line.
+- `docs/VERIFYING.md` explains the segment files, and its by-hand entry check reads entry 0 from `log-segments/0001.ndjson`.
+
+### Tests
+
+- The site build test allows 15 minutes instead of 2: the build reads the whole public log, which keeps growing.
 
 ## 0.2.3
 

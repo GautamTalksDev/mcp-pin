@@ -5,11 +5,8 @@ A transparency log is only worth something if you can check it yourself. This pa
 ## The one command
 
 ```bash
-curl -LO https://mcp-pin.gautamkhosla.com/log.ndjson
-# since 31 Oct 2026 the log is also sealed segments: fetch each file in data/log-segments/ into ./log-segments/
-curl -LO https://mcp-pin.gautamkhosla.com/head.json
-curl -LO https://mcp-pin.gautamkhosla.com/PUBLIC_KEY.txt
-npx --yes mcp-pin@0.1.4 verify-log .
+git clone --depth 1 https://github.com/GautamTalksDev/mcp-pin.git
+npx --yes mcp-pin@0.2.4 verify-log mcp-pin/data
 ```
 
 ```
@@ -17,6 +14,18 @@ public log OK, 454 entries, chain intact, head signature valid
 ```
 
 Non zero exit means something is wrong and you should say so publicly.
+
+## The files
+
+GitHub refuses any file over 100 MiB, and the log passed that on 31 October 2026. Since then it is stored as one hash chain in several files, read in this order:
+
+1. the sealed segments, `data/log-segments/0001.ndjson`, `0002.ndjson` and so on, which never change once sealed;
+2. the active `data/log.ndjson`, which is sealed as the next segment once it passes 50 MiB;
+3. `data/head.json`, the signed head, which covers every entry in every file.
+
+To verify without cloning, put `head.json`, `log.ndjson` and every segment in one folder, keeping the `log-segments` folder, and run `npx --yes mcp-pin@0.2.4 verify-log .` there. A missing, reordered or malformed segment fails.
+
+Use 0.2.4 or later. Earlier versions read only `log.ndjson`, so they report a broken link at entry 0 on the log as it is stored today.
 
 ## What that command actually checks
 
@@ -33,13 +42,13 @@ Together: you cannot change history without either breaking the chain or forging
 
 ## Doing it by hand
 
-If you would rather not trust our verifier either, that is the correct instinct.
+If you would rather not trust our verifier either, that is the correct instinct. Run these in the folder that holds the log files (`mcp-pin/data` after the clone above). Entry 0 is the first line of the first segment.
 
 ```bash
 # recompute one entry's hash
 node -e '
 const crypto = require("crypto");
-const line = require("fs").readFileSync("log.ndjson","utf8").split("\n")[0];
+const line = require("fs").readFileSync("log-segments/0001.ndjson","utf8").split("\n")[0];
 const e = JSON.parse(line);
 const claimed = e.entry_hash;
 delete e.entry_hash;

@@ -849,7 +849,7 @@ process.stdout.write('claude code plugin and install page\n');
   const buildSite = () => {
     if (built) return built;
     const out = tmp('mcp-pin-site-');
-    const b = spawnSync(process.execPath, [path.join(ROOT, 'site/build.js'), '--data', path.join(ROOT, 'data'), '--out', out], { encoding: 'utf8', timeout: 120000 });
+    const b = spawnSync(process.execPath, [path.join(ROOT, 'site/build.js'), '--data', path.join(ROOT, 'data'), '--out', out], { encoding: 'utf8', timeout: 900000 });
     assert.strictEqual(b.status, 0, b.stdout + b.stderr);
     return (built = out);
   };
