@@ -24,3 +24,4 @@
 {"ran_at":"2026-10-28T13:15:22.755Z","duration_s":2720,"candidates":600,"probed_ok":240,"failed":360,"newly_recorded":10,"changed":17,"log_size":975}
 {"ran_at":"2026-10-29T13:15:18.764Z","duration_s":2035,"candidates":600,"probed_ok":233,"failed":367,"newly_recorded":11,"changed":14,"log_size":1000}
 {"ran_at":"2026-10-30T13:07:18.444Z","duration_s":2047,"candidates":600,"probed_ok":238,"failed":362,"newly_recorded":4,"changed":17,"log_size":1021}
+{"ran_at":"2026-10-31T18:52:06.121Z","duration_s":2302,"candidates":600,"probed_ok":244,"failed":356,"newly_recorded":7,"changed":20,"log_size":1048}
