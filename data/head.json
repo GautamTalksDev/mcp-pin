@@ -1,7 +1,7 @@
 {
-  "tree_size": 1536,
-  "root_hash": "75a98c555bce88337d000b6f7757d636cd9a84d63130f5c2596fcfe7d8752b4f",
-  "signed_at": "2026-11-21T14:57:36.134Z",
-  "signature": "E/1Sb5SJsNRjuXsP+EUwjlfgN2C3TuNfWQ2wnDUtD2yinNj/ZnOK59O2ds1rW4bVRp7Cyv7/f0WMX4Fg9Fj1CQ==",
+  "tree_size": 1546,
+  "root_hash": "afde59ad40ee9ff9dea147c11f40c2c138be8c91cd4029fcdf58deae338def25",
+  "signed_at": "2026-11-22T14:58:04.521Z",
+  "signature": "gip0/itTXI6qaF3phW4XL3X/ohSE3/48kSDwutf2IihMKmNIygnZv89Hg1u9ej69t7WsGTnwWDNZVXuZCx97BQ==",
   "public_key": "MCowBQYDK2VwAyEAzEEgtVWLHvqHZ/K3X3NfuV1LxWyyW2y2CVvLrxFPfnM="
 }
